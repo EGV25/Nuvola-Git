@@ -1,0 +1,864 @@
+<?php
+
+/**
+ * Class Name :: Model_deleted_events
+ * Description :: it used for writing the functions on deleted events
+ * Author :: Eduardo Gutierrez 15/09/18
+ * Param :: 
+ * OutPut::
+ */
+class Model_deleted_events extends CI_Model {
+
+    public function __construct() {
+        parent::__construct();
+        $this->load->model('sp_list');
+    }
+
+    function mod_get_deleted_events_data($select = '', $contar = 0) { // Buscar eventos eliminados
+ 
+        $limit = 15;
+
+        $start = (!isset($_COOKIE['pagination_deletedEvents']) || $_COOKIE['pagination_deletedEvents'] == "") ? 0 : $_COOKIE['pagination_deletedEvents'];
+        
+        $limit = 15;
+        #$start = (!isset($_COOKIE['pagination_report']) || $_COOKIE['pagination_report'] == "") ? 0 : $_COOKIE['pagination_report'];
+        $start = (!isset($_COOKIE['pagination_deletedEvents']) || $_COOKIE['pagination_deletedEvents'] == "") ? 0 : $_COOKIE['pagination_deletedEvents'];
+        
+        $hotel_id = $this->session->userdata("hotel_id");
+        $report_ids = ($this->input->post("report_ids")) ? $this->input->post("report_ids") : '';
+        //From & To Date
+
+        #print_r($this->input->post());
+        #print_r($this->input->post('header_startDate') . " <=> " . $this->input->post('header_endDate'));
+        #print_r("<br>");
+        #exit();
+
+        $sdate_post = ($this->input->post('header_startDate') != "") ? $this->input->post('header_startDate') : date("Y-m-d");
+        $edate_post = ($this->input->post('header_endDate') != "") ? $this->input->post('header_endDate') : date("Y-m-d");
+        if (isset($sdate_post)) {
+            $sdate_post = date("Y-m-d", strtotime($sdate_post));
+        } else {
+            $sdate_post = date("Y-m-d");
+        }
+        if (isset($edate_post)) {
+            $edate_post = date("Y-m-d", strtotime($edate_post));
+        } else {
+            $edate_post = date("Y-m-d");
+        }
+        $_SESSION["start_date_re"] = date("m/d/Y", strtotime($sdate_post));
+        $_SESSION["end_date_re"] = date("m/d/Y", strtotime($edate_post));
+        $header_startDate = date("Y-m-d H:i:s", strtotime($sdate_post . " 00:00:00"));
+        $header_endDate = date("Y-m-d H:i:s", strtotime($edate_post . " 23:59:59"));
+
+
+        $date_time = date('Y-m-d H:i:s');
+        $date = date('Y-m-d');
+        $consulta_query = <<<Query
+
+        SELECT e.event_id, e.pending_by, e.completed_by, e.closed_by, e.is_contact, (TIMESTAMPDIFF(SECOND, e.created_on, e.completed_on)) as dif_time,
+                                    ( SELECT COUNT(ea.attachment_id)
+                                    FROM events_attachment ea
+                                    WHERE ea.event_id = e.event_id
+                                    LIMIT 1) AS attachment, e.created_on, dt.first_tag_time, h.address hotel_address, h.phone_no hotel_phone_no, h.hotel_name, h.city, h.state, h.zip_code, e.event_id AS Id,hr.room_id, hr.location AS Location, (
+                                    SELECT CONCAT(g.firstname, ' ',g.lastname)
+                                    FROM guest_registration g
+                                    WHERE g.guest_id =e.guest_id
+                                    LIMIT 1) AS Guest, (
+                                    SELECT g.phone_no
+                                    FROM guest_registration g
+                                    WHERE g.guest_id =e.guest_id
+                                    LIMIT 1) AS phone_no, e.issue AS Issue, t.tag_name AS Tag, d.dept_name AS dept_name, (
+                                    SELECT CONCAT(
+                                    LEFT(st.firstname,1),'. ',st.lastname)
+                                    FROM staff st
+                                    WHERE st.staff_id = e.pending_by
+                                    LIMIT 1) AS Pending_User, e.pending_on AS Pending_Date, (
+                                    SELECT CONCAT(
+                                    LEFT(st.firstname,1),'. ',st.lastname)
+                                    FROM staff st
+                                    WHERE st.staff_id = e.completed_by
+                                    LIMIT 1) AS Completed_User, e.completed_on AS Completed_Date, (
+                                    SELECT CONCAT(
+                                    LEFT(st.firstname,1),'. ',st.lastname)
+                                    FROM staff st
+                                    WHERE st.staff_id = e.closed_by
+                                    LIMIT 1) AS Closed_user, e.closed_on AS Closed_Date, e.status AS STATUS, e.priority AS priority, e.onhold, e.is_recurring, CASE WHEN e.`status` =5 THEN 1 ELSE 0 END AS future, CONCAT(d.dept_name, ' - ',t.tag_name) AS dept_tag, e.priority, '0' rating, CASE WHEN e.status = 1 THEN TIMESTAMPDIFF(MINUTE, e.created_on, '$date_time') WHEN e.status = 2 THEN TIMESTAMPDIFF(MINUTE, e.created_on, e.completed_on) WHEN e.status = 3 THEN TIMESTAMPDIFF(MINUTE, e.created_on, e.closed_on) ELSE TIMESTAMPDIFF(MINUTE, e.created_on, e.updated_on) END AS target_time, e.is_guest, e.count_by_hotel_id AS consecutive
+                                    FROM `events` e, hotel_rooms hr, dept_tag dt, departments d, tags t, hotels h
+                                    WHERE dt.dept_id = d.dept_id AND dt.tag_id = t.tag_id AND dt.dept_tag_id = e.dept_tag_id AND dt.hotel_id = e.hotel_id AND e.active =2 AND hr.hotel_id = e.hotel_id AND e.room_id = hr.room_id AND hr.hotel_id = e.hotel_id AND hr.active = 1 AND e.hotel_id = h.hotel_id AND h.hotel_id = $hotel_id
+
+Query;
+
+    #get Post
+    $post = $this->input->post();
+    #print_r("<br><br><br><br><br><br><br><br><br>POST<br><br>");
+    #print_r($post);
+    #exit();
+    #print_r("<br><br><br>");
+    $where_status = '';
+    $where_category = '';
+    $where_priority = '';
+    $where_Location = '';
+
+
+    #validando Categoria
+
+
+    $category = $post['category'];
+    $where_category = '';
+
+    $f = 0;
+    if (!empty($category)) {
+
+            foreach ($category as $val) {
+                if ($where_category != "")
+                    $where_category.=" OR ";
+                if ($val == 1) { //events
+                    $where_category.= "(e.onhold != 1 AND e.is_recurring != 1)";
+                } else if ($val == 2) { //Guest Request only
+                    $where_category.= "(e.is_guest   = 1)";
+                } else if ($val == 3) { //on hold
+                    $where_category.= "(e.onhold = 1)";
+                } else if ($val == 4) { //future
+                    $f = 1;
+                    $where_category.= "( e.status = 5)";
+                } else if ($val == 5) { //recurring
+                    $where_category.= "(e.is_recurring = 1)";
+                }
+            }
+
+        }  else {
+            $where_category .= " e.is_recurring != 1 and e.onhold = 0 and e.status != 5 and t.tag_type = 1";
+        }
+ 
+if($f == 0) {
+             $where_category .= " and e.status != 5 ";
+        }
+
+
+if ($where_category != "") {
+                $consulta_query .= ' and ('.$where_category.')';
+            }
+
+ 
+    #validando Estados
+    $status = $post['status'];
+ 
+    if($f==1) {
+        $status[] = 5;
+    }
+ 
+    if(!empty($status)) {
+        $in = implode(",", $status);
+        $where_status = ' and e.status in ('.$in.')';
+
+        $consulta_query .= $where_status;
+    }
+    #validando Prioridad
+    $priority = $post['priority'];
+    if(!empty($priority)) {
+        $in_priority = implode(",", $priority);
+        $where_priority = ' and e.priority in ('.$in_priority.')';
+
+        $consulta_query .= $where_priority;
+    }
+
+ 
+        #validando Prioridad
+    $Location = $post['location'];
+    if(!empty($Location) and !in_array("All", $Location)) {
+        $in_Location = implode(",", $Location);
+        $where_Location = ' and hr.room_id in ('.$in_Location.')';
+
+        $consulta_query .= $where_Location;
+    }
+
+
+        #validando department
+    $get_post = $post['department'];
+    if(!empty($get_post) and !in_array("All", $get_post)) {
+        $in = implode(",", $get_post);
+        $where_temp = ' and d.dept_id in ('.$in.')';
+
+        $consulta_query .= $where_temp;
+    }
+
+
+        #validando tag
+    $get_post = $post['tag'];
+    if(!empty($get_post) and !in_array("All", $get_post)) {
+        $in = implode(",", $get_post);
+        $where_temp = ' and t.tag_id in ('.$in.')';
+
+        $consulta_query .= $where_temp;
+    }
+
+
+        #validando user
+    $get_post = $post['user'];
+    if(!empty($get_post) and !in_array("All", $get_post)) {
+        $in = implode(",", $get_post);
+        $where_temp = ' and (e.pending_by in ('.$in.') or e.completed_by in ('.$in.') or e.closed_by in ('.$in.'))';
+
+        $consulta_query .= $where_temp;
+    }
+
+
+
+    $where_temp = " and (e.pending_on BETWEEN '".$header_startDate."' AND '".$header_endDate."' OR e.completed_on BETWEEN '".$header_startDate."' AND '".$header_endDate."' OR e.closed_on BETWEEN '".$header_startDate."' AND '".$header_endDate."')";
+
+    $consulta_query .= $where_temp;
+
+    if (isset($_COOKIE["find_report"]) and trim($_COOKIE["find_report"]) != "") {
+            $txt = trim($_COOKIE["find_report"]);
+
+            $where_temp = " and e.issue LIKE '%" . $txt . "%'";
+
+            $consulta_query .= $where_temp;
+    }
+         #validando event id
+    $get_post = trim($post['event_id']);
+    if(!empty($get_post) ) {
+
+        $where_temp = ' and e.count_by_hotel_id = '.$get_post;
+
+        $consulta_query .= $where_temp;
+    }
+
+
+    $get_post = trim($post['guest_name']);
+    if(!empty($get_post) ) {
+
+        $where_temp = " and ( SELECT CONCAT(g.firstname, ' ',g.lastname) FROM guest_registration g WHERE g.guest_id =e.guest_id LIMIT 1) like '%".$get_post."%' ";
+
+        $consulta_query .= $where_temp;
+    }
+
+
+    //Target Time
+    $targettime = $this->input->post('targettime');
+    $where_target = '';
+
+    if (!empty($targettime)) {
+
+        if (!in_array("All", $targettime)) {
+            foreach ($targettime as $val) {
+              #  print_r($val."<br><br><br>------------<br><br>");
+
+                if ($where_target != "")
+                    $where_target .=" OR ";
+                if ($val == 1) {
+                    $where_target .= " HAVING target_time <= dt.first_tag_time AND e.status != 1";
+                } else if ($val == 2) {
+                    $where_target .= " HAVING target_time > dt.first_tag_time AND e.status != 1";
+                }
+            }
+            if ($where_target != "") {
+                $consulta_query .=  $where_target ;
+            }
+        }
+    }
+ 
+        if ($contar != 1) {
+            
+            $consulta_query .= ' order by e.status limit '.$start.','.$limit;
+            
+            $reports_data = $this->db->query($consulta_query);
+
+            return $reports_data->result_array(); #grid view reports Lista 
+        
+        } else {
+
+            //$consulta_query .= ' order by e.status limit '.$start.','.$limit;
+            
+            $reports_data = $this->db->query($consulta_query);
+
+            $reports_data = $reports_data->result_array();
+
+            $N = count($reports_data);  #grid view reports Lista 
+
+
+            return $N;  #grid view reports Lista 
+        
+
+        }    
+ 
+        
+
+    } # FIN mod_get_deleted_events_data
+
+
+
+    function mod_get_deleted_events_data_no_limit($select = '', $contar = 0) { // Buscar eventos eliminados
+ 
+        $limit = 15;
+
+        $start = (!isset($_COOKIE['pagination_deletedEvents']) || $_COOKIE['pagination_deletedEvents'] == "") ? 0 : $_COOKIE['pagination_deletedEvents'];
+        
+        $limit = 15;
+        #$start = (!isset($_COOKIE['pagination_report']) || $_COOKIE['pagination_report'] == "") ? 0 : $_COOKIE['pagination_report'];
+        $start = (!isset($_COOKIE['pagination_deletedEvents']) || $_COOKIE['pagination_deletedEvents'] == "") ? 0 : $_COOKIE['pagination_deletedEvents'];
+        
+        $hotel_id = $this->session->userdata("hotel_id");
+        $report_ids = ($this->input->post("report_ids")) ? $this->input->post("report_ids") : '';
+        //From & To Date
+
+        #print_r($this->input->post());
+        #print_r($this->input->post('header_startDate') . " <=> " . $this->input->post('header_endDate'));
+        #print_r("<br>");
+        #exit();
+
+        $sdate_post = ($this->input->post('header_startDate') != "") ? $this->input->post('header_startDate') : date("Y-m-d");
+        $edate_post = ($this->input->post('header_endDate') != "") ? $this->input->post('header_endDate') : date("Y-m-d");
+        if (isset($sdate_post)) {
+            $sdate_post = date("Y-m-d", strtotime($sdate_post));
+        } else {
+            $sdate_post = date("Y-m-d");
+        }
+        if (isset($edate_post)) {
+            $edate_post = date("Y-m-d", strtotime($edate_post));
+        } else {
+            $edate_post = date("Y-m-d");
+        }
+        $_SESSION["start_date_re"] = date("m/d/Y", strtotime($sdate_post));
+        $_SESSION["end_date_re"] = date("m/d/Y", strtotime($edate_post));
+        $header_startDate = date("Y-m-d H:i:s", strtotime($sdate_post . " 00:00:00"));
+        $header_endDate = date("Y-m-d H:i:s", strtotime($edate_post . " 23:59:59"));
+
+
+        $date_time = date('Y-m-d H:i:s');
+        $date = date('Y-m-d');
+        $consulta_query = <<<Query
+
+        SELECT e.is_recurring, e.event_id, e.pending_by, e.completed_by, e.closed_by, e.is_contact, (TIMESTAMPDIFF(SECOND, e.created_on, e.completed_on)) as dif_time,
+                                    ( SELECT COUNT(ea.attachment_id)
+                                    FROM events_attachment ea
+                                    WHERE ea.event_id = e.event_id
+                                    LIMIT 1) AS attachment, e.created_on, dt.first_tag_time, h.address hotel_address, h.phone_no hotel_phone_no, h.hotel_name, h.city, h.state, h.zip_code, e.event_id AS Id,hr.room_id, hr.location AS Location, (
+                                    SELECT CONCAT(g.firstname, ' ',g.lastname)
+                                    FROM guest_registration g
+                                    WHERE g.guest_id =e.guest_id
+                                    LIMIT 1) AS Guest, (
+                                    SELECT g.phone_no
+                                    FROM guest_registration g
+                                    WHERE g.guest_id =e.guest_id
+                                    LIMIT 1) AS phone_no, e.issue AS Issue, t.tag_name AS Tag, d.dept_name AS dept_name, (
+                                    SELECT CONCAT(
+                                    LEFT(st.firstname,1),'. ',st.lastname)
+                                    FROM staff st
+                                    WHERE st.staff_id = e.pending_by
+                                    LIMIT 1) AS Pending_User, e.pending_on AS Pending_Date, (
+                                    SELECT CONCAT(
+                                    LEFT(st.firstname,1),'. ',st.lastname)
+                                    FROM staff st
+                                    WHERE st.staff_id = e.completed_by
+                                    LIMIT 1) AS Completed_User, e.completed_on AS Completed_Date, (
+                                    SELECT CONCAT(
+                                    LEFT(st.firstname,1),'. ',st.lastname)
+                                    FROM staff st
+                                    WHERE st.staff_id = e.closed_by
+                                    LIMIT 1) AS Closed_user, e.closed_on AS Closed_Date, e.status AS STATUS, e.priority AS priority, e.onhold, e.is_recurring, CASE WHEN e.`status` =5 THEN 1 ELSE 0 END AS future, CONCAT(d.dept_name, ' - ',t.tag_name) AS dept_tag, e.priority, '0' rating, CASE WHEN e.status = 1 THEN TIMESTAMPDIFF(MINUTE, e.created_on, '$date_time') WHEN e.status = 2 THEN TIMESTAMPDIFF(MINUTE, e.created_on, e.completed_on) WHEN e.status = 3 THEN TIMESTAMPDIFF(MINUTE, e.created_on, e.closed_on) ELSE TIMESTAMPDIFF(MINUTE, e.created_on, e.updated_on) END AS target_time, e.is_guest, e.count_by_hotel_id AS consecutive
+                                    FROM `events` e, hotel_rooms hr, dept_tag dt, departments d, tags t, hotels h
+                                    WHERE dt.dept_id = d.dept_id AND dt.tag_id = t.tag_id AND dt.dept_tag_id = e.dept_tag_id AND dt.hotel_id = e.hotel_id AND e.active =2 AND hr.hotel_id = e.hotel_id AND e.room_id = hr.room_id AND hr.hotel_id = e.hotel_id AND hr.active = 1 AND e.hotel_id = h.hotel_id AND h.hotel_id = $hotel_id
+
+Query;
+
+    #get Post
+    $post = $this->input->post();
+    #print_r("<br><br><br><br><br><br><br><br><br>POST<br><br>");
+    #print_r($post);
+    #exit();
+    #print_r("<br><br><br>");
+    $where_status = '';
+    $where_category = '';
+    $where_priority = '';
+    $where_Location = '';
+
+
+    #validando Categoria
+
+
+    $category = $post['category'];
+    $where_category = '';
+
+    $f = 0;
+    if (!empty($category)) {
+
+            foreach ($category as $val) {
+                if ($where_category != "")
+                    $where_category.=" OR ";
+                if ($val == 1) { //events
+                    $where_category.= "(e.onhold != 1 AND e.is_recurring != 1)";
+                } else if ($val == 2) { //Guest Request only
+                    $where_category.= "(e.is_guest   = 1)";
+                } else if ($val == 3) { //on hold
+                    $where_category.= "(e.onhold = 1)";
+                } else if ($val == 4) { //future
+                    $f = 1;
+                    $where_category.= "( e.status = 5)";
+                } else if ($val == 5) { //recurring
+                    $where_category.= "(e.is_recurring = 1)";
+                }
+            }
+
+        }  else {
+            $where_category .= " e.is_recurring != 1 and e.onhold = 0 and e.status != 5 and t.tag_type = 1";
+        }
+ 
+if($f == 0) {
+             $where_category .= " and e.status != 5 ";
+        }
+
+
+if ($where_category != "") {
+                $consulta_query .= ' and ('.$where_category.')';
+            }
+
+ 
+    #validando Estados
+    $status = $post['status'];
+ 
+    if($f==1) {
+        $status[] = 5;
+    }
+ 
+    if(!empty($status)) {
+        $in = implode(",", $status);
+        $where_status = ' and e.status in ('.$in.')';
+
+        $consulta_query .= $where_status;
+    }
+    #validando Prioridad
+    $priority = $post['priority'];
+    if(!empty($priority)) {
+        $in_priority = implode(",", $priority);
+        $where_priority = ' and e.priority in ('.$in_priority.')';
+
+        $consulta_query .= $where_priority;
+    }
+
+ 
+        #validando Prioridad
+    $Location = $post['location'];
+    if(!empty($Location) and !in_array("All", $Location)) {
+        $in_Location = implode(",", $Location);
+        $where_Location = ' and hr.room_id in ('.$in_Location.')';
+
+        $consulta_query .= $where_Location;
+    }
+
+
+        #validando department
+    $get_post = $post['department'];
+    if(!empty($get_post) and !in_array("All", $get_post)) {
+        $in = implode(",", $get_post);
+        $where_temp = ' and d.dept_id in ('.$in.')';
+
+        $consulta_query .= $where_temp;
+    }
+
+
+        #validando tag
+    $get_post = $post['tag'];
+    if(!empty($get_post) and !in_array("All", $get_post)) {
+        $in = implode(",", $get_post);
+        $where_temp = ' and t.tag_id in ('.$in.')';
+
+        $consulta_query .= $where_temp;
+    }
+
+
+        #validando user
+    $get_post = $post['user'];
+    if(!empty($get_post) and !in_array("All", $get_post)) {
+        $in = implode(",", $get_post);
+        $where_temp = ' and (e.pending_by in ('.$in.') or e.completed_by in ('.$in.') or e.closed_by in ('.$in.'))';
+
+        $consulta_query .= $where_temp;
+    }
+
+
+
+    $where_temp = " and (e.pending_on BETWEEN '".$header_startDate."' AND '".$header_endDate."' OR e.completed_on BETWEEN '".$header_startDate."' AND '".$header_endDate."' OR e.closed_on BETWEEN '".$header_startDate."' AND '".$header_endDate."')";
+
+    $consulta_query .= $where_temp;
+
+    if (isset($_COOKIE["find_report"]) and trim($_COOKIE["find_report"]) != "") {
+            $txt = trim($_COOKIE["find_report"]);
+
+            $where_temp = " and e.issue LIKE '%" . $txt . "%'";
+
+            $consulta_query .= $where_temp;
+    }
+         #validando event id
+    $get_post = trim($post['event_id']);
+    if(!empty($get_post) ) {
+
+        $where_temp = ' and e.count_by_hotel_id = '.$get_post;
+
+        $consulta_query .= $where_temp;
+    }
+
+
+    $get_post = trim($post['guest_name']);
+    if(!empty($get_post) ) {
+
+        $where_temp = " and ( SELECT CONCAT(g.firstname, ' ',g.lastname) FROM guest_registration g WHERE g.guest_id =e.guest_id LIMIT 1) like '%".$get_post."%' ";
+
+        $consulta_query .= $where_temp;
+    }
+
+
+    //Target Time
+    $targettime = $this->input->post('targettime');
+    $where_target = '';
+
+    if (!empty($targettime)) {
+
+        if (!in_array("All", $targettime)) {
+            foreach ($targettime as $val) {
+              #  print_r($val."<br><br><br>------------<br><br>");
+
+                if ($where_target != "")
+                    $where_target .=" OR ";
+                if ($val == 1) {
+                    $where_target .= " HAVING target_time <= dt.first_tag_time AND e.status != 1";
+                } else if ($val == 2) {
+                    $where_target .= " HAVING target_time > dt.first_tag_time AND e.status != 1";
+                }
+            }
+            if ($where_target != "") {
+                $consulta_query .=  $where_target ;
+            }
+        }
+    }
+ 
+          
+            $consulta_query .= ' order by e.status, e.count_by_hotel_id ';
+            
+            $reports_data['data']['data'] = $this->db->query($consulta_query)->result_array();
+
+             
+            # INICIO DE COMENTARIOS
+
+             $id_array = array();
+
+        for ($i = 0; $reports_data[$i] != null; $i++) {
+            array_push($id_array, $reports_data[$i]['event_id']);
+        }
+        
+
+	$IN_ID = "'" . implode("','", $id_array) . "'";
+
+    $reports_data['data']['comment'] = $this->db->query(" select ec.event_id , CONCAT(st.firstname ,  ' - ' , st.lastname ) as staff, ec.`comment` as comment, CONCAT(ec.created_date ,  ' ' , ec.created_time)  created_on from events_comment ec, staff st
+
+    where st.staff_id = ec.staff_id
+
+        and ec.event_id in ($IN_ID)")->result_array();
+ 
+        $reports_data['data']['attachment'] = $this->db->query("select at.event_id, at.attachment_file_name from events_attachment at where at.deleted = 0 and at.event_id in ($IN_ID)")->result_array();
+ 
+            #FIN DE COMENTARIOS
+
+        	/*print_r($reports_data['comment']);
+        	exit();
+*/
+            return $reports_data; #grid view reports Lista 
+        
+
+    }
+    function mod_get_deleted_events_data_count($select = '') { // Buscar eventos eliminados
+
+
+        $hotel_id = ($this->session->userdata("hotel_id")) ? $this->session->userdata("hotel_id") : $this->uri->segment(2);
+        $report_ids = ($this->input->post("report_ids")) ? $this->input->post("report_ids") : '';
+
+        $date_time = date('Y-m-d H:i:s');
+        $date = date('Y-m-d');
+
+       $this->db->select("count(ea.attachment_id) as attachment,e.created_on, dt.first_tag_time,  dt.first_tag_time as second_tag_time,,h.address as hotel_address, h.phone_no as hotel_phone_no, h.hotel_name, h.city, h.state, h.zip_code, e.event_id AS Id, hr.location AS Location,concat(g.firstname,' ',g.lastname) AS Guest,g.phone_no, e.issue AS Issue,t.tag_name AS Tag, d.dept_name, concat(left(s1.firstname,1),'. ',s1.lastname) AS Pending_User, e.pending_on AS Pending_Date,concat(left(s2.firstname,1),'. ',s2.lastname) AS Completed_User, e.completed_on  AS Completed_Date, concat(left(s3.firstname,1),'. ',s3.lastname) AS Closed_user, e.closed_on  AS Closed_Date,e.status as Status,e.priority as  priority, e.onhold, e.is_recurring, CASE WHEN  concat(e.date,' ',e.time) >= '$date_time' THEN 1 ELSE 0 END as future,gr.rating,
+            CASE WHEN e.status = 1 THEN TIMESTAMPDIFF(MINUTE, e.created_on, '$date_time')
+            WHEN e.status = 2 THEN TIMESTAMPDIFF(MINUTE,e.created_on, e.completed_on)
+            WHEN e.status = 3 THEN TIMESTAMPDIFF(MINUTE, e.created_on, e.closed_on)
+            ELSE TIMESTAMPDIFF(MINUTE, e.created_on, e.updated_on) END as target_time, e.is_guest,e.guest_id,e.deleted_on,e.count_by_hotel_id", false);
+        $this->db->from("events e");
+        $this->db->join("hotels h", "e.hotel_id=h.hotel_id", "left");
+        $this->db->join("events_attachment ea", "e.event_id=ea.event_id", "left");
+        $this->db->join("hotel_rooms hr", "hr.room_id = e.room_id", "left");
+        $this->db->join("dept_tag dt", "e.dept_tag_id = dt.dept_tag_id", "left");
+        $this->db->join("departments d", "dt.dept_id = d.dept_id", "left");
+        $this->db->join("tags t", "t.tag_id = dt.tag_id", "left");
+        $this->db->join("staff s1", "s1.staff_id=e.pending_by", "left");
+        $this->db->join("staff s2", "s2.staff_id=e.completed_by", "left");
+        $this->db->join("staff s3", "s3.staff_id=e.closed_by", "left");
+        $this->db->join("guest_registration g", "g.guest_id=e.guest_id", "left");
+        $this->db->join("(SELECT  CAST(SUM(answer/4) as UNSIGNED) as rating, guest_id FROM `guest_rating`  group by guest_id)  gr", "gr.guest_id=e.guest_id", "left");
+
+
+        $post = $this->input->post();
+
+        if (!empty($post)) {
+            $checkPost = $this->input->post('checkPost');
+
+            if ($checkPost == 1) { //check post value
+                $this->db->where(array("e.status" => 1));
+                $this->db->where("e.onhold != 1 AND e.is_recurring != 1 AND concat(e.date,' ',e.time) <= '$date_time' AND DATE(e.created_on) = '$date'");
+            }
+
+
+            $status = $this->input->post('status');
+            if (!empty($status)) { // status
+                $this->db->where_in('e.status', $status);
+
+            }
+
+
+            $category = $this->input->post('category');
+            if (!empty($category)) { //category
+
+
+
+                $categoryQuery = "";
+                foreach ($category as $val) {
+
+                    if ($categoryQuery != "")
+                        $categoryQuery.=" OR ";
+
+                    if ($val == 1) { //events
+                        $categoryQuery.= "(e.onhold != 1 AND e.is_recurring != 1 AND concat(e.date,' ',e.time) <= '$date_time')";
+
+                    } else if ($val == 2) { //Guest Request only
+                        $categoryQuery.= "(e.is_guest   = 1)";
+
+                    } else if ($val == 3) { //on hold
+                        $categoryQuery.= "(e.onhold = 1)";
+
+                    } else if ($val == 4) { //future
+                        $categoryQuery.= "(concat(e.date,' ',e.time) >= '$date_time')";
+
+                    } else if ($val == 5) { //recurring
+                        $categoryQuery.= "(e.is_recurring = 1)";
+                    }
+                }
+                if ($categoryQuery != "") {
+                    $this->db->where("(" . $categoryQuery . ")");
+                }
+            }
+            //Rate my stay
+            $ratemystay = $this->input->post('ratemystay');
+            if (!empty($ratemystay)) {
+                if (!in_array("All", $ratemystay)) {
+                    $this->db->where_in('gr.rating', $ratemystay);
+                }
+            }
+            //shift
+            $shift = $this->input->post('shift');
+            if($shift[0]=='' && $shift[1]=='' && $shift[2]=='') $shift='';
+            if (!empty($shift)) {
+                $shiftQuery = "";
+                foreach ($shift as $val) {
+                    if ($val != "All") {
+                        if ($shiftQuery != "")
+                            $shiftQuery.=" OR ";
+                        $start_time = $this->input->post("start_time_$val");
+                        $end_time = $this->input->post("end_time_$val");
+                        $from_date = isset($start_time) ? date('Y-m-d') . ' ' . $start_time : date('Y-m-d H:i:s');
+                        $to_date = isset($end_time) ? date('Y-m-d') . ' ' . $end_time : date('Y-m-d H:i:s');
+                        if (strtotime($start_time) > strtotime($end_time)) {
+
+                        $shiftQuery.= "if(
+                            (TIME(e.created_on) >= '$start_time'),
+                            (e.created_on >= concat(DATE(e.created_on), ' ', '$start_time') AND e.created_on <= concat(DATE(DATE_ADD(e.created_on, INTERVAL 1 DAY)), ' ', '$end_time')),
+                            (e.created_on >= concat(DATE(DATE_SUB(e.created_on, INTERVAL 1 DAY)), ' ', '$start_time') AND e.created_on <= concat(DATE(e.created_on), ' ', '$end_time')))";
+                        } else {
+                            $shiftQuery.= "(TIME(e.created_on) >= '$start_time' AND TIME(e.created_on) <= '$end_time')";
+                        }
+                    }
+                }
+                if ($shiftQuery != "") {
+                    $this->db->where("(" . $shiftQuery . ")");
+                }
+            }
+
+
+            //ority
+            $priority = $this->input->post('priority');
+            if (!empty($priority)) {
+                $this->db->where_in('e.priority', $priority);
+            }
+            //location
+            $location = $this->input->post('location');
+            if (!empty($location)) {
+                if (!in_array("All", $location)) {
+                    $this->db->where_in('e.room_id', $location);
+                }
+            }
+            //User
+            $user = $this->input->post('user');
+            if (!empty($user)) {
+                if (!in_array("All", $user)) {
+                    $this->db->where_in('s1.staff_id', $user);
+                }
+                //$this->db->where("(s1.staff_id IN ($user) OR s2.staff_id IN ($user) OR s3.staff_id IN ($user))");
+            }
+
+            //shirley
+             $guest_name = $this->input->post('guest_name');
+             $guest_name = trim($guest_name);
+             if(isset($guest_name) && $guest_name != ""){
+             $this->db->where("concat(g.firstname,' ',g.lastname ) LIKE '%$guest_name%'");
+             } //end
+
+             //Event Id
+            $event_id = $this->input->post('event_id');
+            if(isset($event_id) && $event_id != ""){
+            $this->db->where('e.count_by_hotel_id', $event_id);
+            }
+
+            //Departments
+            $department = $this->input->post('department');
+            if (!empty($department)) {
+                if (!in_array("All", $department)) {
+                    $this->db->where_in('d.dept_id', $department);
+                }
+            }
+            //Tags
+            $tag = $this->input->post('tag');
+            if (!empty($tag)) {
+                if (!in_array("All", $tag)) {
+                    $this->db->where_in('t.tag_id', $tag);
+                }
+            }
+            //From & To Date
+
+            $header_startDate = $this->input->post('header_startDate');
+            $header_endDate = $this->input->post('header_endDate');
+
+            if ((isset($header_startDate) && $header_startDate != "") || (isset($header_endDate) && $header_endDate != "")) {
+
+                if ($header_startDate != "" && $header_endDate != "") {
+                    $header_startDate = date("Y-m-d H:i:s", strtotime($header_startDate . " 00:00:01"));
+                    $header_endDate = date("Y-m-d H:i:s", strtotime($header_endDate . " 23:59:59"));
+                    $this->db->where("e.created_on >= '$header_startDate' AND e.created_on <= '$header_endDate'");
+
+                } else if ($header_startDate != "") {
+                    $header_startDate = date("Y-m-d H:i:s", strtotime($header_startDate . " 00:00:01"));
+                    $this->db->where("e.created_on >= '$header_startDate' AND e.created_on <= '$date_time'");
+
+                } else if ($header_endDate != "") {
+                    $header_endDate = date("Y-m-d H:i:s", strtotime($header_endDate . " 23:59:59"));
+                    $this->db->where("e.created_on <= '$header_endDate'");
+
+                }
+
+            } else {
+                $this->db->where("DATE(e.created_on) = '$date'");
+            }
+            //Target Time
+            $targettime = $this->input->post('targettime');
+            if (!empty($targettime)) {
+                if (!in_array("All", $targettime)) {
+                    foreach ($targettime as $val) {
+                        if ($val == 1) {
+                            $this->db->having("target_time <= dt.first_tag_time AND e.status != 1");
+                        } else if ($val == 2) {
+                            $this->db->having("target_time > dt.first_tag_time AND e.status != 1");
+                        }
+                    }
+                }
+            }
+        } else {
+            $this->db->where(array("e.status" => 1));
+            $this->db->where("e.onhold != 1 AND e.is_recurring != 1 AND concat(e.date,' ',e.time) <= '$date_time' AND DATE(e.updated_on) = '$date'");
+
+        } // if (!empty($post))
+
+        $this->db->where(array("e.hotel_id" => $hotel_id, "e.active" => '2'));
+        $this->db->group_by("e.event_id");
+        $this->db->order_by("e.event_id", "DESC","e.deleted_on","DESC");
+
+
+        $reports_data = $this->db->get();
+        //echo $this->db->last_query();exit;
+
+
+
+        return $reports_data->result_array();
+    }
+
+    /**
+     * Function Name :: mod_get_all_departments
+     * Description :: it will return departments array
+     * Param :: $select
+     * OutPut::array
+     */
+    function mod_get_all_departments() {
+        $hotel_id = $this->session->userdata("hotel_id");
+        $query_dept = $this->db->query("select * from departments where hotel_id=$hotel_id  where is_active='1'  group by  dept_id  order by dept_name ");
+
+        return $query_dept->result();
+    }
+
+    /**
+     * Function Name :: mod_get_all_departments
+     * Description :: it will return tags array
+     * Param :: $select
+     * OutPut::array
+     */
+    function mod_get_all_tags() {
+        $hotel_id = $this->session->userdata("hotel_id");
+
+        $department = $this->input->post('department');
+        $dept = "";
+        if (!empty($department)) {
+            $department = implode(",", $department);
+            $deptId = str_replace("All,", "-1", $department);
+            if ($deptId != -1)
+                $dept = "and dt.dept_id IN ($deptId)";
+        }
+
+        $query_tags = $this->db->query("SELECT t.tag_id, t.tag_name FROM `tags` t INNER JOIN dept_tag dt on t.tag_id = dt.tag_id  WHERE t.hotel_id = $hotel_id and t.is_active='1'  $dept group by  t.tag_id order by  t.tag_name");
+        //$query_tags = $this->db->query("select * from tags where hotel_id=$hotel_id ");
+
+        return $query_tags->result();
+    }
+
+    /**
+     * Function Name :: mod_get_all_staff
+     * Description :: it will return staff array
+     * Param :: $select
+     * OutPut::array
+     */
+    function mod_get_all_staff() {
+        $hotel_id = $this->session->userdata("hotel_id");
+        $staff_data = $this->db->query("select s.staff_id,concat(UPPER(left(s.firstname,1)),'. ',s.lastname) as staff_name from staff s left join staff_hotels sh ON sh.staff_id = s.staff_id where sh.hotel_id=$hotel_id and s.is_active=1 group by s.staff_id order by s.staff_id");
+
+        return $staff_data->result();
+    }
+
+    /**
+     * Function Name :: mod_get_all_staff
+     * Description :: it will return locations(Rooms) array
+     * Param :: $select
+     * OutPut::array
+     */
+    function mod_get_all_locations() {
+        $hotel_id = $this->session->userdata("hotel_id");
+        $room_data = $this->db->query("select r.* from guest_checkin_details gc right join hotel_rooms r on r.room_id=gc.room_no where gc.hotel_id='$hotel_id' and r.active != 2 and gc.status='1' group by r.room_id order by r.location");
+
+        return $room_data->result();
+    }
+
+    /**
+     * Function Name :: mod_get_shift_details
+     * Description :: it will return shift details array
+     * Param :: $select
+     * OutPut::array
+     */
+    function mod_get_shift_details() {
+        $hotel_id = $this->session->userdata("hotel_id");
+        $shift_data = $this->db->query("select * from hotel_shifts where hotel_id='$hotel_id'");
+
+        return $shift_data->result();
+    }
+
+}

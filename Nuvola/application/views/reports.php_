@@ -1,0 +1,2075 @@
+  
+  <?php 
+
+/*  print_r("<br><br>");
+  print_r($reports);
+  exit();
+*/
+
+        if(!isset($_COOKIE['view_on']) || $_COOKIE['view_on'] != "reports") {   
+          setcookie('short_by_field', 'STATUS');
+          setcookie('short_by_type', 'asc'); 
+        };
+
+        $is_admin=$this->session->userdata('super_admin');
+       $angel_enable=$this->session->userdata('angel_update');
+
+         $N_ISSUE = 210;
+
+         $max_pagination = 15;
+
+        /*print_r($_COOKIE['short_by_field']);
+
+*/
+
+          $pagina = (!isset($_COOKIE['pagination_report']) || $_COOKIE['pagination_report'] == "")? 0 : $_COOKIE['pagination_report'];
+
+          $pagina_show = ceil($pagina/$max_pagination) + 1;
+
+
+
+          $total_paginas = ceil($totalpages/$max_pagination);
+
+          $total_paginas = ($total_paginas == 0)? 1 : $total_paginas;
+
+
+
+          #$ult_pagina = ceil($totalPkgCount/$max_pagination);
+
+          $ult_pagina = (floor($totalpages/$max_pagination) * $max_pagination);
+
+
+
+  ?>
+
+
+
+  <link href="<?php echo base_url('styles/css/bootstrap.min.css') ?>" rel="stylesheet">
+
+  <link href="<?php echo base_url('styles/css/font-awesome/css/font-awesome.min.css') ?>" rel="stylesheet">
+
+  <link href="<?php echo base_url('styles/css/simple-sidebar.css') ?>" rel="stylesheet">
+
+  <!-- Custom styles for this template -->
+
+  <link href="<?php echo base_url('styles/css/customNUVOLA.css') ?>" rel="stylesheet">
+
+  <link href="<?php echo base_url('styles/css/developer.css') ?>" rel="stylesheet">
+
+  <link href="<?php echo base_url('styles/js/jquery.smartmenus.bootstrap.css') ?>" >
+
+  <style type="text/css">
+
+  .dataTables_filter {
+
+    display: none;
+
+  }
+
+  </style>
+
+
+
+  <script type="text/javascript">
+
+  function mod_reports_temp () {
+
+    
+
+  $("#print_mod").submit();
+
+     
+
+  }
+
+
+
+  </script>
+
+
+
+<form action="print_mod" method="POST" name="print_mod" id="print_mod">
+
+  
+
+</form> 
+
+
+
+  <div class="col-lg-24 templateBlock">
+
+    <div class="row">
+
+      <div class="tabularGridBlock col-sm-24  col-md-24  col-lg-24">
+
+        <div class="" style="margin-top: -10px;">
+
+          <button id="btnTotal" class="btn btnTotal" type="button" style="width: 9%;"><?php echo Lang('Reports')?Lang('Reports'):'Reports' ?> <span id="total" class="badge"><?php echo ($totalpages);?></span> </button>
+
+      
+
+      
+
+          <button class="btn btnModReports1" type="button"onclick="mod_reports1(0);" title="<?php echo Lang('Mod_Reports')?Lang('Mod_Reports'):'MOD Report' ?>"> <span id="refresh_pending"> <span class="icon-right-text mod-report-btn" id="pend" style="margin-left: -15px; margin-top:-1px;"><?php echo Lang('Mod_Reports')?Lang('Mod_Reports'):'MOD Report' ?> </span><span class="fa fa-download fa-size-17 down-icon1"></span> </span> </button>  
+
+
+
+          <a href="javascript:void(0)" onclick="mod_reports1(1);" class="btn btnModPasson1" type="button" title="<?php echo Lang('Mod_Passon')?Lang('Mod_Passon'):'MOD + Pass On' ?>"> <span id="refresh_closed"> <span class="icon-right-text" id="clos" style="margin-left: -7px;"><?php echo Lang('Mod_Passon')?Lang('Mod_Passon'):'MOD + Pass On' ?> </span> <span class="fa fa-download fa-size-17 down-icon"></span></span> </a>
+
+            
+
+          <button class="btn btnModproductivity" type="button" onclick="productivity_reports1();" style="width: 130px;" title="<?php echo Lang('Productivity')?Lang('Productivity'):'Productivity' ?>"> <span id="refresh_closed"> <span class="icon-right-text mod-report-btn" id="clos" style="margin-left: -15px;"><?php echo Lang('Productivity')?Lang('Productivity'):'Productivity' ?> </span> <span class="fa fa-download fa-size-17 down-icon1"></span></span></button>
+
+          <a href="mr" class="btn btnModPasson" type="button" id="month_focus" style="width: 144px;" title="<?php echo Lang('Monthly_Report')?Lang('Monthly_Report'):'Monthly Report' ?>"> <span id="refresh_closed"> <span class="icon-right-text" id="clos" style="margin-left: -6px;"><?php echo Lang('Monthly_Report')?Lang('Monthly_Report'):'Monthly Report' ?> </span> <span class="fa fa-download fa-size-17 down-icon"></span></span> </a> <span class="divide"></span> <a class="refresh-btn" href="<?php echo base_url();?>index.php/reports" title="<?php echo Lang('Refresh')?Lang('Refresh'):'Refresh' ?>"></a>
+
+          <button class="btn btnModproductivity" id="export_focus" type="button" onclick="productivity_export();" style="width: 98px;" title="<?php echo Lang('Export')?>"> <span id="refresh_closed"> <span class="icon-right-text mod-report-btn" id="clos" style="margin-left: -28px;"><?php echo Lang('Export')?Lang('Export'):'Export'?></span> <span class="fa fa-download fa-size-17 down-icon1"></span></span></button>
+
+          <div class="pull-right">
+
+            <div style="width: 100%;"> <a style="margin-top:10%; width: 99%;" class="btn btnBlack" href="dashboard" title="<?php echo Lang('Back_To_Dashboard')?Lang('Back_To_Dashboard'):'Back To Dashboard'; ?>"><span class="fa fa-arrow-left" style="width: 10%;"></span> <?php echo Lang('Back_To_Dashboard')?Lang('Back_To_Dashboard'):'Back To Dashboard'; ?></a> </div>
+
+            <div id="msg"></div>
+
+          </div>
+
+          <div class="clear-fix"></div>
+
+        </div>
+
+        <div class="mod-events">
+
+
+
+          <?php $defaultChk = ""; if (!($_SERVER['REQUEST_METHOD'] == 'POST')) { $defaultChk = "selected"; } ?>
+
+         <!-- report it -->
+
+
+
+          <form action="reports" method="POST" name="reports_form" id="reports_form">
+
+          <input type="hidden" name="find_imput" id="find_imput">
+
+            <div class="mod-events-col1">
+
+              <label class="control-label"><?php echo Lang('Status')?Lang('Status'):'Status' ?></label>
+
+              <div class="nuvola-rounded-select reports-page">
+
+                <select id="status" name="status[]" class="selectpicker show-tick form-control" data-live-search="false" multiple="multiple" title='<?php echo Lang('Pending')?ucwords(Lang('Pending')):'Pending' ?>'>
+
+                  <?php $status = (!empty($_POST['status'])) ? $this->input->post('status') : array();
+
+                  ?>
+
+                  <option <?php if (in_array(1, $status)) { echo "selected"; }?> value="1" <?php echo $defaultChk;?>> <?php echo Lang('Pending')?ucwords(Lang('Pending')):'Pending' ?></option>
+
+                  <option <?php if (in_array(2, $status)) { echo "selected"; }?> value="2" <?php echo $defaultChk;?>> <?php echo Lang('Completed')?Lang('Completed'):'Completed' ?></option>
+
+                  <option <?php if (in_array(3, $status)) { echo "selected"; }?> value="3" <?php echo $defaultChk;?>> <?php echo Lang('Closed')?Lang('Closed'):'Closed' ?></option>
+
+                </select>
+
+              </div>
+
+            </div>
+
+            <div class="mod-events-col2" id="category_focus">
+
+
+
+            <input type="hidden" id="cate" id="cate" value="1">
+
+              <label class="control-label"><?php echo Lang('CATEGORY')?Lang('CATEGORY'):'CATEGORY' ?></label>
+
+              <div class="nuvola-rounded-select reports-page">
+
+                <select id="category" name="category[]" class="selectpicker show-tick form-control" data-live-search="false" multiple="multiple" title='<?php echo Lang('Events')?Lang('Events'):'Events' ?>'>
+
+                  <?php 
+
+                     $category = (!empty($_POST['category'])) ? $this->input->post('category') : array();        
+
+                  ?>
+
+                  <option <?php if (in_array(1, $category)) { echo "selected"; }?> value="1" <?php echo $defaultChk;?>><?php echo Lang('Events')?Lang('Events'):'Events' ?></option>
+
+                  <?php 
+                     if($angel_enable== 1 || $is_admin == 1) { ?>
+                      <option <?php if (in_array(2, $category)) { echo "selected"; }?> value="2"> <?php echo Lang('Guest_Requests_Only')?Lang('Guest_Requests_Only'):'Guest Requests Only' ?></option>
+                    <?php }
+                  ?> 
+
+                  <option <?php if (in_array(3, $category)) { echo "selected"; }?> value="3"><?php echo Lang('On_Hold')?Lang('On_Hold'):'On Hold' ?></option>
+
+                  <option <?php if (in_array(4, $category)) { echo "selected"; }?> value="4"><?php echo Lang('Future')?Lang('Future'):'Future' ?></option>
+
+                  <option <?php if (in_array(5, $category)) { echo "selected"; }?> value="5"><?php echo Lang('Recurring')?Lang('Recurring'):'Recurring' ?></option>
+
+                </select>
+
+              </div>
+
+            </div>
+
+            
+
+            <?php   ?>
+
+
+
+            <div class="mod-events-col4" id="shift_focus">
+
+         
+
+              <label class="control-label"><?php echo Lang('Shift')?Lang('Shift'):'Shift' ?></label>
+
+              <div class="nuvola-rounded-select reports-page">
+
+                <select id="shift" name="shift[]" class="selectpicker show-tick form-control" data-live-search="false" multiple="multiple" title='<?php echo Lang('All')?Lang('All'):'All' ?>'>
+
+                  <?php 
+
+                      $shiftlist = (!empty($_POST['shift'])) ? $this->input->post('shift') : array();       
+
+                  ?>
+
+                  <!--<option <?php //if (in_array('All', $shiftlist)) { echo "selected"; }?> value="All">All</option>-->
+
+                  <?php if(!empty($shift_details)){
+
+                    foreach($shift_details as $shift){            
+
+                  ?>
+
+                  <option <?php if (in_array($shift->shift_id, $shiftlist)) { echo "selected"; }?> value="<?php echo $shift->shift_id; ?>" <?php echo $defaultChk;?>><?php echo (trim(Lang($shift->name)) != "")? Lang($shift->name) : ($shift->name) ; ?></option>
+
+                  <?php } } ?>
+
+                </select>
+
+                <?php if(!empty($shift_details)){
+
+              foreach($shift_details as $shift){  ?>
+
+                <input type="hidden" name="start_time_<?php echo $shift->shift_id; ?>" value="<?php echo $shift->start_time; ?>"/>
+
+                <input type="hidden" name="end_time_<?php echo $shift->shift_id; ?>" value="<?php echo $shift->end_time; ?>"/>
+
+                <?php } } ?>
+
+              </div>
+
+              <!--<select name="shift" class="nuvola-rounded-select mod-rounded">
+
+                        <option>All</option>
+
+              <option value="1">Morning</option>
+
+              <option value="2">Evening</option>
+
+              <option value="3">Night</option>          
+
+                    </select>-->
+
+            </div>
+
+            <div class="mod-events-col5" id="priority_focus">
+
+              <label class="control-label"><?php echo Lang('PRIORITY')?Lang('PRIORITY'):'PRIORITY' ?></label>
+
+              <div class="nuvola-rounded-select reports-page">
+
+                <select id="priority" name="priority[]" class="selectpicker show-tick form-control" data-live-search="false" multiple="multiple" title='<?php echo Lang('Low')?Lang('Low'):'Low' ?>'>
+
+                  <?php $priority = (!empty($_POST['priority'])) ? $this->input->post('priority') : array();  ?>
+
+                  <!--<option <?php //if (in_array('All', $priority)) { echo "selected"; }?> value="All">All</option>-->
+
+                  <option <?php if (in_array(3, $priority)) { echo "selected"; }?> value="3" <?php echo $defaultChk;?>><?php echo Lang('Low')?Lang('Low'):'Low' ?></option>
+
+                  <option <?php if (in_array(2, $priority)) { echo "selected"; }?> value="2" <?php echo $defaultChk;?>><?php echo Lang('Medium')?Lang('Medium'):'Medium' ?></option>
+
+                  <option <?php if (in_array(1, $priority)) { echo "selected"; }?> value="1" <?php echo $defaultChk;?>><?php echo Lang('High')?Lang('High'):'High' ?></option>
+
+                </select>
+
+              </div>
+
+            </div>
+
+            <div class="mod-events-col6">
+
+              <label class="control-label"><?php echo Lang('LOCATION')?Lang('LOCATION'):'LOCATION' ?></label>
+
+              <div class="nuvola-rounded-select reports-page">
+
+                <select id="location" name="location[]" class="selectpicker show-tick form-control" data-live-search="false" multiple="multiple" title='<?php echo Lang('All2')?Lang('All2'):'All' ?>'>
+
+                  <?php 
+
+            $loc = (!empty($_POST['location'])) ? $this->input->post('location') : array();       
+
+          ?>
+
+                  <option <?php if (in_array('All', $loc)) { echo "selected"; }?> value="All" <?php echo $defaultChk;?> class="check_all_click('All');"><?php echo Lang('All2')?Lang('All2'):'All' ?></option>
+
+                  <?php if(!empty($locations)){
+
+            foreach($locations as $location){ ?>
+
+                  <option <?php if (in_array($location->room_id, $loc)) { echo "selected"; }?> value="<?php echo $location->room_id; ?>" <?php echo $defaultChk;?>  class="check_all_click(<?php echo $location->room_id; ?>);"><?php echo $location->location; ?></option>
+
+                  <?php } } ?>
+
+                </select>
+
+              </div>
+
+            </div>
+
+            <div class="mod-events-col7">
+
+              <label class="control-label"><?php echo Lang('DEPARTMENT')?Lang('DEPARTMENT'):'DEPARTMENT' ?></label>
+
+              <div class="nuvola-rounded-select reports-page">
+
+                
+
+                <select id="department" name="department[]" class="selectpicker show-tick form-control" data-live-search="false" multiple="multiple" title='<?php echo Lang('All')?Lang('All'):'All' ?>'>
+
+                  
+
+                  
+
+                </select>
+
+              </div>
+
+            </div>
+
+            <div class="mod-events-col8">
+
+              <label class="control-label"><?php echo Lang('Tag')?Lang('Tag'):'Tag' ?></label>
+
+              <div class="nuvola-rounded-select reports-page">
+
+                <select id="tag" name="tag[]" class="selectpicker show-tick form-control" data-live-search="false" multiple="multiple" title='<?php echo Lang('All2')?Lang('All2'):'All' ?>'>
+
+                  <?php 
+
+                     $t = (!empty($_POST['tag'])) ? $this->input->post('tag') : array();       
+
+                  ?>
+
+                  <option <?php if (in_array('All', $t)) { echo "selected"; }?> value="All2" class="check_all_click('All');"><?php echo Lang('All2')?Lang('All2'):'All2' ?></option>
+
+                  <?php if(!empty($tags)){
+
+
+
+                  foreach($tags as $tag){ 
+
+                   if($tag['tag_name']!='') ?>
+
+                      <option <?php if (in_array($tag['tag_id'], $t)) { echo "selected"; }?> value="<?php echo $tag['tag_id']; ?>" class="check_all_click(<?php echo $tag['tag_id']; ?>);"><?php echo $tag['tag_name'];?></option>
+
+                  
+
+                  <?php } } ?>
+
+                </select>
+
+              </div>
+
+            </div>
+
+            <div class="mod-events-col9 pack-feedback">
+
+              <label class="control-label"><?php echo Lang('Guest')?Lang('Guest'):'Guest' ?></label>
+
+              <?php 
+
+                  $report_guest_name = (isset($_POST['guest_name'])) ? $this->input->post('guest_name') : "";
+
+                  $report_guest_id = (isset($_POST['guest_id'])) ? $this->input->post('guest_id') : "";       
+
+              ?>
+
+              <input type="hidden" name="guest_id" value="<?php echo $report_guest_id;?>" id="report_guest_id"/>
+
+              <input type="text" placeholder="<?php echo Lang('All')?Lang('All'):'All' ?>" value="<?php echo $report_guest_name;?>" class="form-control txt-auto ui-autocomplete-input" id="report_guest_name" name="guest_name" autocomplete="off" >
+
+            </div>
+
+            <div class="mod-events-col10">
+
+              <label class="control-label"><?php echo Lang('User')?Lang('User'):'User' ?></label>
+
+              <div class="nuvola-rounded-select reports-page">
+
+                <select id="user" name="user[]" class="selectpicker show-tick form-control" data-live-search="false" multiple="multiple" title='<?php echo Lang('All')?Lang('All'):'All' ?>'>
+
+                  <?php 
+
+            $user = (!empty($_POST['user'])) ? $this->input->post('user') : array();        
+
+          ?>
+
+                  <option <?php if (in_array('All', $user)) { echo "selected"; }?> value="All" <?php echo $defaultChk;?> class="check_all_click('All');"><?php echo Lang('All')?Lang('All'):'All' ?></option>
+
+                  <?php if(!empty($staffs)){
+
+            foreach($staffs as $staff){ ?>
+
+                  <option <?php if (in_array($staff->staff_id, $user)) { echo "selected"; }?> value="<?php echo $staff->staff_id; ?>" <?php echo $defaultChk;?>  class="check_all_click(<?php echo $staff->staff_id; ?>);"><?php echo $staff->staff_name; ?></option>
+
+                  <?php } } ?>
+
+                </select>
+
+              </div>
+
+            </div>
+
+            <div class="mod-events-col11 pack-feedback" id="id_focus">
+
+              <label class="control-label"><?php echo Lang('ID')?Lang('ID'):'ID' ?></label>
+
+              <?php 
+
+          $report_event_id = (isset($_POST['event_id'])) ? $this->input->post('event_id') : "";       
+
+          ?>
+
+              <input type="text" placeholder="<?php echo Lang('All')?Lang('All'):'All' ?>" value="<?php echo $report_event_id; ?>" class="form-control txt-auto ui-autocomplete-input" id="report_event_id" name="event_id" autocomplete="off">
+
+            </div>
+
+            <div class="mod-events-col12">
+
+              <label class="control-label"><?php echo Lang('TARGET_TIME')?Lang('TARGET_TIME'):'TARGET TIME' ?></label>
+
+              <div class="nuvola-rounded-select reports-page">
+
+                <?php 
+
+            $targettime = (!empty($_POST['targettime'])) ? $this->input->post('targettime') : array();        
+
+          ?>
+
+                <select id="targettime" name="targettime[]" class="selectpicker show-tick form-control" data-live-search="false" multiple="multiple" title='<?php echo Lang('All')?Lang('All'):'All' ?>'>
+
+                  <option <?php if (in_array('All', $targettime)) { echo "selected"; }?> value="All" <?php echo $defaultChk;?> class="check_all_click('All');"><?php echo Lang('All')?Lang('All'):'All' ?></option>
+
+                  <option <?php if (in_array(1, $targettime)) { echo "selected"; }?> value="1" <?php echo $defaultChk;?> class="check_all_click(1);"><?php echo Lang('On_Time')?Lang('On_Time'):'On Time' ?></option>
+
+                  <option <?php if (in_array(2, $targettime)) { echo "selected"; }?> value="2" <?php echo $defaultChk;?> class="check_all_click(2);"><?php echo Lang('Delayed')?Lang('Delayed'):'Delayed' ?></option>
+
+                </select>
+
+              </div>
+
+            </div>
+
+            <div class="mod-events-col13" id="master_startDate">
+
+              <label class="control-label"><?php echo Lang('START_DATE')?Lang('START_DATE'):'START DATE' ?></label>
+
+              <div class="input-group date input-group rounded-dt-con">
+
+                <?php 
+
+                  $header_startDate = (isset($_POST['header_startDate'])) ? $this->input->post('header_startDate') : date('m/d/Y');
+
+                ?>
+
+                <input type="text" value="<?php echo $header_startDate; ?>" placeholder="<?php echo Lang('Select_Date')?Lang('Select_Date'):'Select Date' ?>" name="header_startDate" id="header1_startDate" class="form-control reports-dt-input" readonly="readonly"/>
+
+                <span class="input-group-addon cus-addon reports-icon"><span class="glyphicon glyphicon-calendar"></span></span> </div>
+
+            </div>
+
+            <div class="mod-events-col15" id="master_endDate">
+
+              <label class="control-label"><?php echo Lang('END_DATE')?Lang('END_DATE'):'END DATE' ?></label>
+
+              <div class="input-group date input-group rounded-dt-con">
+
+                <?php 
+
+          $header_endDate = (isset($_POST['header_endDate'])) ? $this->input->post('header_endDate') :date('m/d/Y');
+
+          ?>
+
+                <input type="text" value="<?php echo $header_endDate; ?>" placeholder="<?php echo Lang('Select_Date')?Lang('Select_Date'):'Select Date' ?>" name="header_endDate" id="header1_endDate" class="form-control reports-dt-input" readonly="readonly"/>
+
+                <span class="input-group-addon cus-addon reports-icon"><span class="glyphicon glyphicon-calendar"></span></span> </div>
+
+            </div>
+
+            <div class="mod-events-col14">
+
+              <button class="btnSaveReports" onclick="submit_form_report()" style="border-radius: 100px;" id="btn_save1" type="button"><?php echo Lang('Search')?Lang('Search'):'Search' ?></button>
+
+            </div>
+
+
+
+            <div class="clearfix"></div>
+
+          </form>
+
+
+
+
+
+
+
+        </div>
+
+        <div class="table-responsive" >
+
+          <table class="table table-bordered table-striped table-hover reportsTable" width="100%" cellspacing="0"  id="report_tbl">
+
+            <thead>
+
+              <tr class="grid-headers">
+
+                <td colspan="5" class="showing-today-event" id="show_today_data"><?php  
+
+                  $header_startDate = $this->input->post('header_startDate');
+
+                  $header_endDate = $this->input->post('header_endDate'); 
+
+                  if(!((isset($header_startDate) && $header_startDate != "") || (isset($header_endDate) && $header_endDate != ""))){ echo Lang('Today_events')?Lang('Today_events'):"Showing Today's Events"; } ?></td>
+
+                  <td></td>
+
+                <td colspan="2" class="pending-title" style="text-align:center;"><?php echo Lang('Pending')?Lang('Pending'):'Pending'?></td>
+
+                <td colspan="2" class="completed-title" style="text-align:center;"><?php echo Lang('Completed')?Lang('Completed'):'Completed'?></td>
+
+                <td colspan="2" class="closed-title" style="text-align:center;"><?php echo Lang('Closed')?Lang('Closed'):'Closed'?></td>
+
+                <td colspan="2"></td>
+
+              </tr>
+
+              <tr style="cursor: pointer !important;">
+
+                <th onclick="short_by('consecutive')"    class="report-bgsort"  style="cursor:pointer;white-space: nowrap; text-align: center;"><?php echo Lang('ID')?Lang('ID'):'ID'?>&nbsp;&nbsp;</th>
+
+                <th onclick="short_by('Location')"       class="report-bgsort"  style="cursor:pointer;white-space: nowrap; text-align: center;"><?php echo Lang('Location')?Lang('Location'):'Location'?>&nbsp;&nbsp;&nbsp;&nbsp;</th>
+
+                <th onclick="short_by('Guest')"          class="report-bgsort"  style="cursor:pointer;white-space: nowrap; text-align: center;"><?php echo Lang('Guest')?Lang('Guest_Name'):'Guest'?>&nbsp;&nbsp;&nbsp;&nbsp;</th>
+
+                <th onclick="short_by('Issue')"          class="report-bgsort"  style="cursor:pointer; max-width: 500px; text-align: center;"><?php echo Lang('Issues')?Lang('Issues'):'Issue'?>&nbsp;&nbsp;&nbsp;&nbsp;</th>
+
+                <th onclick="short_by('dept_name')"      class="report-bgsort"  style="cursor:pointer;white-space: nowrap; text-align: center;"><?php echo Lang('Department_Tag')?Lang('Department_Tag'):'Department & Tag'?>&nbsp;&nbsp;&nbsp;&nbsp;</th>
+
+                <th onclick="short_by('priority')"       class="report-bgsort"  style="cursor:pointer;width:50px; white-space: nowrap; text-align: center;"><?php echo 'P';?> </th>
+
+                <th onclick="short_by('Pending_User')"   class="pending-bg"  style="cursor:pointer;white-space: nowrap; text-align: center;" class="pending-bg"><?php echo Lang('User')?Lang('User'):'User'?>&nbsp;&nbsp;&nbsp;&nbsp;</th>
+
+                <th onclick="short_by('Pending_Date')"   class="pending-bg"  style="cursor:pointer;white-space: nowrap; text-align: center;" class="pending-bg"><?php echo Lang('datetime')?Lang('datetime'):'Date & Time'?>&nbsp;&nbsp;&nbsp;&nbsp;</th>
+
+                <th onclick="short_by('Completed_User')" class="completed-bg"  style="cursor:pointer;white-space: nowrap; text-align: center;" class="completed-bg"><?php echo Lang('User')?Lang('User'):'User'?>&nbsp;&nbsp;&nbsp;&nbsp;</th>
+
+                <th onclick="short_by('Completed_Date')" class="completed-bg"  style="cursor:pointer;white-space: nowrap; text-align: center;" class="completed-bg"><?php echo Lang('datetime')?Lang('datetime'):'Date & Time'?>&nbsp;&nbsp;&nbsp;&nbsp;</th>
+
+                <th onclick="short_by('Closed_user')"    class="closed-bg"  style="cursor:pointer;white-space: nowrap; text-align: center;" class="closed-bg"><?php echo Lang('User')?Lang('User'):'User'?>&nbsp;&nbsp;&nbsp;&nbsp;</th>
+
+                <th onclick="short_by('Closed_Date')"    class="closed-bg" style="cursor:pointer;white-space: nowrap; text-align: center;" ><?php echo Lang('datetime')?Lang('datetime'):'Date & Time'?>&nbsp;&nbsp;&nbsp;&nbsp;</th>
+
+                <th style="white-space: nowrap; text-align: center;"><?php echo Lang('Target_Time')?Lang('Target_Time'):'Target Time'?>&nbsp;&nbsp;&nbsp;&nbsp;</th>
+
+                <!--<th><?php //echo Lang('Priority')?Lang('Priority'):'Priority'?></th>
+
+                  <th><?php //echo Lang('Status')?Lang('Status'):'Status'?></th>-->
+
+              </tr>
+
+            </thead>
+
+            <tbody>
+
+              <?php 
+
+        if(!empty($reports)) { 
+
+          $assort=array();
+
+          if($_COOKIE['short_by_field'] != 'STATUS') {
+           
+            foreach ($reports as $key => $row) { 
+              $arrsort[$key] = $row[trim($_COOKIE['short_by_field'])]; 
+              
+              if($_COOKIE['short_by_type'] == "desc") { 
+                array_multisort($arrsort, SORT_DESC, $reports); 
+              } else {
+                array_multisort($arrsort, SORT_ASC, $reports); 
+              }
+            }
+          }
+             
+
+          
+            //print_r($reports2)
+
+
+
+          foreach ($reports as $key=>$value) 
+
+          { 
+
+            $targetTime = "";
+
+            $minutes = $value['target_time'];         
+
+            if(isset($value['first_tag_time']) && $value['first_tag_time'] != "" && $value['STATUS'] != 1){           
+
+              if($minutes <= $value['first_tag_time']){  
+
+              $targetTime= lang("On_Time")." - ".secondsToSTime($minutes*60);
+
+              
+
+               
+
+            }
+
+            else{
+
+              $minutes = $minutes - $value['first_tag_time'];
+
+              
+
+              $targetTime = lang("Delayed")." - ".secondsToSTime($minutes*60);
+
+            }
+
+          }
+
+          if($value['STATUS'] == 1)
+
+          {
+
+            $status='Pending';
+
+            $color = '#40abd4';
+
+          }
+
+          else  if($value['STATUS'] == 2)
+
+          {
+
+            $status='Completed';
+
+            $color = '#b9ce33';
+
+          }
+
+          else  if($value['STATUS'] == 3)
+
+          {
+
+            $status='Closed';
+
+            $color = '#c40918';
+
+          }
+
+          
+
+          if($value['priority'] == 1)
+
+          {
+
+            $priority='High';
+
+          }
+
+          else  if($value['priority'] == 2)
+
+          {
+
+            $priority='Medium';
+
+          }
+
+          else
+
+          {
+
+            $priority='Low';
+
+          }
+
+          
+
+          if($value['onhold'] == 1){
+
+            $color = '#EBBC01';
+
+          }
+
+          if($value['is_recurring'] == 1){
+
+            $color = '#36C9BF';
+
+          }
+
+          if($value['future'] == 1){
+
+            $color = '#6D2F91';
+
+          }
+
+          $rows_id[]=$value['Id'];
+
+          $Dep_tag= $value['dept_name'].' - '.$value['Tag'];
+
+
+
+          if($value['priority'] == 1) { 
+
+            $P = substr(Lang('High'), 0, 1);
+
+
+
+          } elseif ($value['priority'] == 2) {
+
+            $P = substr(Lang('Medium'), 0, 1);
+
+            
+
+          } elseif ($value['priority'] == 3) {
+
+            $P = substr(Lang('Low'), 0, 1);
+
+            
+
+          }
+
+
+
+          /*
+
+            Lang('Medium')
+
+            Lang('High')
+
+          */
+
+ 
+
+          //Translate dep_tag 
+
+          if(Lang($value['dept_name']) && Lang($value['Tag']))
+
+           //$Dep_tag =Lang($value['dept_name']).' - '.Lang($value['Tag']);
+
+            $Dep_tag =$value['dept_name'].' - '.$value['Tag'];
+
+           $issue =$value['Issue'];
+
+           $commet = $issue;
+
+           
+
+                        ?>
+
+              <tr style=" max-width: 100px;" id="<?php echo $value['consecutive']; ?>" class="rep_select"  onclick="IDReport(<?php echo $value['Id']; ?>)" style="cursor:pointer">
+
+                <td style="width:3% !important; background-color:<?php echo $color;?>" class="reports-id-bg"><?php echo $value['consecutive'];?>
+
+                  <?php if($value['attachment'] > 0){?>
+
+                  &nbsp;<span class="glyphicon glyphicon-paperclip"></span>
+
+                  <?php } ?></td>
+
+                <td style="white-space: nowrap;"><?php echo (is_numeric($value['Location'])) ? Lang('Room')." ".$value['Location'] : $value['Location'];?></td>
+
+                <td style="white-space: nowrap;"><?php echo $value['Guest']?><?php echo !empty($value['phone_no'])?' - '.$value['phone_no'].'':''?></td>
+
+                <td style="max-width: 500px; "><?php  $issue1=str_replace('((((','(@ ',str_replace("~|!@#",Lang('Quantity') ,$commet));  
+
+                   $issue2=str_replace("((((",'(@ ' ,$commet); 
+
+                   echo substr(nl2br($issue1), 0, $N_ISSUE);?></td>
+
+                <td style="white-space: nowrap;"><?php echo $Dep_tag ?></td>
+
+                <td style="white-space: nowrap;"><?php echo $P ?></td>
+
+                <td style="white-space: nowrap;"><?php echo $value['Pending_User']?></td>
+
+                <td style="white-space: nowrap;"><?php if(isset($value['Pending_Date'])){ if($value['Pending_Date'] != '0000-00-00 00:00:00') echo date('n/j/y g:i A',strtotime($value['Pending_Date'])); }?></td>
+
+                <td style="white-space: nowrap;"><?php echo $value['Completed_User']?></td>
+
+                <td style="white-space: nowrap;"><?php if(isset($value['Completed_Date'])){ if($value['Completed_Date'] != '0000-00-00 00:00:00') echo date('n/j/y g:i A',strtotime($value['Completed_Date'])); }?></td>
+
+                <td style="white-space: nowrap;"><?php echo $value['Closed_user']?></td>
+
+                <td style="white-space: nowrap;"><?php if(isset($value['Closed_Date'])){ if($value['Closed_Date'] != '0000-00-00 00:00:00') echo date('n/j/y g:i A',strtotime($value['Closed_Date'])); }?></td>
+
+                <td style="white-space: nowrap;"><?php echo $targetTime; ?></td>
+
+              </tr>
+
+              <?php 
+
+               } 
+
+            }  ?>
+
+            </tbody>
+
+          </table>
+
+          <!--//start-->
+
+
+
+
+
+
+
+          <!---end -->
+
+
+
+
+
+        </div>
+
+      </div>
+
+      <!-- Table Grid Container -->
+
+   <!-- Paginacion Pagination-->
+
+ 
+
+
+
+            <?php if($pagina_show != $total_paginas) { ?>
+
+              <a style="margin-top:10px;" id="pag_pak_last" onclick="pagination('ult')" class="btn2 btnBlack2 pull-right" title="<?php echo Lang('LAST')?Lang('LAST'):'LAST' ?>"> <?php echo  Lang('LAST')?Lang('LAST'):'LAST' ?>  <span class="fa" ></span> </a> 
+
+            <?php } ?>
+
+
+
+            
+
+            <?php if($pagina_show != $total_paginas) { ?>
+
+              <a style="margin-top:10px;" id="pag_pak_next" onclick="pagination('sig')" class="btn2 btnBlack2 pull-right" title="<?php echo Lang('NEXT')?Lang('NEXT'):'NEXT' ?>"> <?php echo Lang('NEXT')?Lang('NEXT'):'NEXT'; ?> <span class="fa fa-arrow-right" ></span> </a> 
+
+            <?php } ?>
+
+
+
+
+
+              
+
+            <a style="margin-top:10px;"  id="pag_pak_pag" class="btn2 btnBlack2 pull-right"> <span class="fa" > </span> <?php echo $pagina_show . " / " . $total_paginas; ?>  </a> 
+
+            
+
+            <?php if($pagina_show > 1) { ?>
+
+              <a style="margin-top:10px;" id="pag_pak_prev" onclick="pagination('ant')" class="btn2 btnBlack2 pull-right" title="<?php echo Lang('previus')?Lang('previus'):'Previus' ?>"> <span class="fa fa-arrow-left" ></span> <?php echo Lang('previus')?Lang('previus'):'Previus'; ?> </a> 
+
+            <?php } ?>
+
+
+
+            <?php if($pagina_show > 1) { ?>
+
+              <a style="margin-top:10px;"  id="pag_pak_firsh" onclick="pagination('pri')" class="btn2 btnBlack2 pull-right" title="<?php echo Lang('First')?Lang('First'):'First' ?>"> <span class="fa" ></span> <?php echo Lang('First')?Lang('First'):'First' ?> </a> 
+
+            <?php } ?>
+
+
+
+    </div>
+
+    <!-- Row End -->
+
+  </div>
+
+  <!-- Templates Container -->
+
+
+
+  <form action="reports" id="refresh_report">
+
+
+
+  <script type="text/javascript">
+
+  
+
+  function pagination (val) {
+
+   
+
+  var pagina = '<?php echo $pagina; ?>';
+
+  var max_pagination = '<?php echo $max_pagination; ?>';
+
+  
+
+  var ult_pag = '<?php echo $ult_pagina; ?>';
+
+    
+
+  if(val == 'pri') {
+
+    document.cookie = "pagination_report=0";
+ 
+  } else if(val == 'ant') {
+
+    document.cookie = "pagination_report=" + (parseInt(pagina) - parseInt(max_pagination));
+ 
+  } else if(val == 'sig') {
+
+    document.cookie = "pagination_report=" + (parseInt(pagina) + parseInt(max_pagination));
+ 
+  } else if(val == 'ult') { 
+
+     document.cookie = "pagination_report=" + ult_pag;
+
+    
+
+     
+
+  }
+
+ location.reload();
+ //$("#reports_form").submit();
+
+
+
+}
+
+
+
+  function short_by (field) {
+
+
+
+ 
+
+  var short_by_field = "<?php echo $_COOKIE['short_by_field']; ?>";
+
+  var short_by_type = "<?php echo $_COOKIE['short_by_type']; ?>" ;
+
+  
+
+  if(short_by_type == "asc") {
+
+    document.cookie = "short_by_type=desc";
+
+
+
+  } else {
+
+    document.cookie = "short_by_type=asc";
+
+
+
+  }
+
+
+
+  document.cookie = "short_by_field=" + field;
+
+  location.reload();
+ // $("#reports_form").submit();
+
+  
+
+}
+
+  function tutorialDemo() {
+
+
+
+        var _slides = [
+
+        {
+
+          content: '<?php echo Lang("modules_r") ?>',
+
+          position: 'left-center',
+
+          arrowPath: 'https://hotel.mynuvola.com/images/arrows/arrow-blue.png',
+
+          overlayMode: 'focus',
+
+          overlayPadding: 10,
+
+          selector: '#month_focus',
+
+          title: '<?php echo Lang("new_report") ?>',
+
+          showButtonNext: false,
+
+        },
+
+        {
+
+          content: '<?php echo Lang("filters_r") ?>',
+
+          position: 'left-center',
+
+          arrowPath: 'https://hotel.mynuvola.com/images/arrows/arrow-blue.png',
+
+          overlayMode: 'focus',
+
+          overlayPadding: 10,
+
+          selector: '#export_focus',
+
+          title: '<?php echo Lang("advanced_r") ?>',
+
+          showButtonNext: false,
+
+        },
+
+        {
+
+          content: '<?php echo Lang("new_filter") ?>',
+
+          position: 'bottom-center',
+
+          arrowPath: 'https://hotel.mynuvola.com/images/arrows/arrow-blue.png',
+
+          overlayMode: 'focus',
+
+          overlayPadding: 10,
+
+          selector: '#category_focus',
+
+          title: '<?php echo Lang("new_filter2") ?>',
+
+          labelStart: '<?php echo Lang("new_report") ?>',
+
+          labelEnd: '<?php echo Lang("new_report") ?>',
+
+          labelNext:'<?php echo Lang("new_report") ?>',
+
+          labelPrevious: '<?php echo Lang("new_report") ?>'
+
+        },
+
+        {
+
+          content: '<?php echo Lang("new_shift") ?>',
+
+          position: 'right-center',
+
+          arrowPath: 'https://hotel.mynuvola.com/images/arrows/arrow-blue.png',
+
+          overlayMode: 'focus',
+
+          overlayPadding: 10,
+
+          selector: '#shift_focus',
+
+          title: '<?php echo Lang("new_shift2") ?>',
+
+          labelStart: '<?php echo Lang("new_report") ?>',
+
+          labelEnd: '<?php echo Lang("new_report") ?>',
+
+          labelNext:'<?php echo Lang("new_report") ?>',
+
+          labelPrevious: '<?php echo Lang("new_report") ?>'
+
+        },
+
+        {
+
+          content: '<?php echo Lang("new_priority") ?>',
+
+          position: 'right-center',
+
+          arrowPath: 'https://hotel.mynuvola.com/images/arrows/arrow-blue.png',
+
+          overlayMode: 'focus',
+
+          overlayPadding: 20,
+
+          selector: '#priority_focus',
+
+          title: '<?php echo Lang("new_priority2") ?>',
+
+          labelStart: '<?php echo Lang("new_report") ?>',
+
+          labelEnd: '<?php echo Lang("new_report") ?>',
+
+          labelNext:'<?php echo Lang("new_report") ?>',
+
+          labelPrevious: '<?php echo Lang("new_report") ?>'
+
+        },
+
+        {
+
+          content: '<?php echo Lang("new_id") ?>',
+
+          position: 'right-center',
+
+          arrowPath: 'https://hotel.mynuvola.com/images/arrows/arrow-blue.png',
+
+          overlayMode: 'focus',
+
+          overlayPadding: 20,
+
+          selector: '#id_focus',
+
+          title: 'ID',
+
+          labelStart: '<?php echo Lang("new_report") ?>',
+
+          labelEnd: '<?php echo Lang("new_report") ?>',
+
+          labelNext:'<?php echo Lang("new_report") ?>',
+
+          labelPrevious: '<?php echo Lang("new_report") ?>'
+
+        },
+
+        ];
+
+
+
+        $.tutorialize({
+
+          slides: _slides,
+
+          labelStart: '<?php echo Lang("labelStart") ?>',
+
+          labelNext: '<?php echo Lang("labelNext") ?>',
+
+          labelPrevious: '<?php echo Lang("labelPrevious") ?>',
+
+          labelEnd: '<?php echo Lang("labelEnd") ?>',
+
+        });
+
+
+
+        $.tutorialize.start();
+
+
+
+      }
+
+    $(document).ready(function() {
+
+
+
+      document.cookie = "view_on=reports";
+
+      document.cookie = 'find_report=';
+
+        
+
+      change_department ();
+
+
+
+      if('<?php echo tutorial(5) ?>')
+
+        tutorialDemo();
+
+     
+
+      $('#master_startDate').datetimepicker(
+
+     {
+
+      pickTime: false
+
+      });
+
+      $('#master_endDate').datetimepicker(
+
+     {
+
+      pickTime: false
+
+      });
+
+    var date1 = "<?php echo date("m/d/Y",strtotime($hotel_start_date[0]['activated_on']));?>";
+
+   $("#master_startDate").data("DateTimePicker").setMinDate(date1);
+
+   $("#master_endDate").data("DateTimePicker").setMinDate(date1);
+
+   
+
+
+
+   $("#master_startDate").on("change.dp",function (e) 
+
+      {
+
+          $("#master_endDate").data("DateTimePicker").setMinDate($("#header1_startDate").val());
+
+          start_date = Date.parse($("#header1_startDate").val());
+
+          end_date = Date.parse($("#header1_endDate").val());
+
+          if(start_date > end_date)
+
+          {
+
+              $("#header1_endDate").data("DateTimePicker").setDate($("#header1_startDate").val());
+
+          } 
+
+       
+
+      });
+
+   
+
+      $("#master_endDate").on("change.dp",function (e) 
+
+      {
+
+          $("#master_startDate").data("DateTimePicker").setMaxDate($("#header1_endDate").val());
+
+          start_date = Date.parse($("#header1_startDate").val());
+
+          end_date = Date.parse($("#header1_endDate").val());
+
+          if(start_date > end_date)
+
+          {
+
+              $("#header1_startDate").data("DateTimePicker").setDate($("#header1_endDate").val());
+
+          } 
+
+      }); 
+
+   
+
+  $( "#category" ).change(function() {
+
+ 
+
+    if ($(this).val() != null && $(this).val() != '') {
+
+    id = $(this).val().toString();
+
+    
+
+
+
+      if(id.search("2") !== -1){
+
+        $('#ratemystay').prop('disabled',false);
+
+              $('#ratemystay').selectpicker('val', ['All', '5', '4', '3', '2', '1']);
+
+
+
+        $('#ratemystay').selectpicker('refresh');
+
+      } else{
+
+        $('#ratemystay').selectpicker('val', []);
+
+        $('#ratemystay').selectpicker('refresh');
+
+        $('#ratemystay').prop('disabled',true);     
+
+      }
+
+    }
+
+    else{
+
+      $('#ratemystay').selectpicker('val', []);
+
+      $('#ratemystay').selectpicker('refresh');
+
+      $('#ratemystay').prop('disabled',true); 
+
+    }
+
+ 
+
+
+
+
+
+     $('#cate').val(id);
+
+ 
+
+     change_department();
+
+     //change_tag ();
+
+
+
+  });
+
+
+
+
+
+    /*shirley orderselect deparment
+
+   $( document ).ready(function() {
+
+      ordenarSelect('department');
+
+    });
+
+  
+
+  //shirley orderselect deparment    
+
+  function ordenarSelect(id_componente)
+
+    {
+
+      var selectToSort = jQuery('#' +id_componente);
+
+      var optionActual = selectToSort.val();
+
+      selectToSort.html(selectToSort.children('option').sort(function (a, b) {
+
+        return a.text === b.text ? 0 : a.text < b.text ? -1 : 1;
+
+      })).val(optionActual);
+
+    }*/
+
+
+
+  $( "#department" ).change(function() {
+
+    
+
+    change_tag ();
+
+  });
+
+
+
+
+
+function change_tag () {
+
+ 
+
+  toggleSelectAll($( "#department" ));
+
+      
+
+      if($( "#department" ).attr('id') == "department"){
+
+
+
+      deptId = "";
+
+      if(departmentAll){
+
+        deptId = $( "#department" ).val();
+
+      }
+
+
+
+      if(deptId == null)
+
+          deptId = '';
+
+  
+
+
+
+      $.ajax( {
+
+
+
+          type: "POST",
+
+          url: "<?php echo base_url(); ?>index.php/getDeptTagList",
+
+          data:  'deptId=' + deptId + "&cate=" + $("#cate").val(),
+
+          cache: false,
+
+          dataType: "json",
+
+          success: function(result)
+
+          { 
+
+         
+
+
+
+            if (jQuery.isEmptyObject(result)) {
+
+              $('#tag').selectpicker('val', []);            
+
+              $('#tag').prop('disabled',true);
+
+            }
+
+            else{
+
+           
+
+              $('#tag').prop('disabled',false);
+
+              $("#tag").html('<option value="All" selected class="check_all_click(\'All\')"><?php echo Lang('All2')?Lang('All2'):'All' ?></option>');
+
+              $.each(result, function(idx, obj) {
+
+
+
+
+
+                $("#tag").append('<option value="'+obj.tag_id+'" selected class="check_all_click('+obj.tag_id+')">'+obj.tag_name+'</option>');
+
+              });
+
+            }
+
+                $('#tag').selectpicker('refresh');
+
+          }
+
+        });   
+
+      } 
+
+
+
+}
+
+
+
+//department
+
+
+
+function change_department () { 
+
+   
+
+      $.ajax( {
+
+
+
+          type: "POST",
+
+          url: "department_list",
+
+          data:  "category=" + $("#cate").val(),
+
+          cache: false,
+
+          dataType: "json",
+
+          success: function(result)
+
+          {
+
+              //alert(result);
+
+
+
+            if (jQuery.isEmptyObject(result)) {
+
+              $('#department').selectpicker('val', []);            
+
+              $('#department').prop('disabled',true);
+
+            }
+
+            else{
+
+           
+
+              $('#department').prop('disabled',false);
+
+              $("#department").html('<option value="All" selected class="check_all_click(\'All\')"><?php echo Lang('All2')?Lang('All2'):'All' ?></option>');
+
+              $.each(result, function(idx, obj) {
+
+                $("#department").append('<option value="'+obj.dept_id+'" selected class="check_all_click('+obj.dept_id+')">'+obj.dept_name+'</option>');
+
+              });
+
+            }
+
+              
+
+            $('#department').selectpicker('refresh');
+
+            
+
+            change_tag();
+
+
+
+          }
+
+        });   
+
+}
+
+ 
+
+  //$('#category').selectpicker().change(function(){toggleSelectAll($(this));}).trigger('change');
+
+    
+
+    //get guest results for reports
+
+    $('#report_guest_name').autocomplete({
+
+      source: function (request, response) {
+
+        $.ajax({
+
+          url: 'getGuestList',
+
+          dataType: "json",
+
+          data: {
+
+            key: request.term,
+
+            type: 'reports_search_guest'
+
+          },
+
+          success: function (data) {
+
+            if (jQuery.isEmptyObject(data)) {
+
+              $('#report_guest_id').val('');
+
+            }
+
+            if(request.term == ""){
+
+                response(false);
+
+              }
+
+              else{
+
+            response($.map(data, function (item) {                                    
+
+              return {
+
+                label: item.guest_name + ' ' + item.phone_no + '',
+
+                value: $.trim(item.guest_name),
+
+                guestId: item.guest_id
+
+              }
+
+            }));
+
+          }
+
+          }
+
+        });
+
+      },
+
+      select: function (event, ui) {
+
+        $('#report_guest_id').val(ui.item.guestId);
+
+      },
+
+      autoFocus: false,
+
+      minLength: 0
+
+    });
+
+    
+
+    //get event id's for reports
+
+    $('#report_event_id').autocomplete({
+
+      source: function (request, response) {
+
+        $.ajax({
+
+          url: 'getGuestList',
+
+          dataType: "json",
+
+          data: {
+
+            key: request.term,
+
+            type: 'reports_event_id'
+
+          },
+
+          success: function (data) {
+
+            if (jQuery.isEmptyObject(data)) {
+
+            }
+
+            if(request.term == ""){
+
+                response(false);
+
+              }
+
+              else{
+
+            response($.map(data, function (item) {                                    
+
+              return {
+
+                label: item.event_id,
+
+                value: $.trim(item.event_id)
+
+                
+
+              }
+
+            }));
+
+          }
+
+          }
+
+        });
+
+      },
+
+      select: function (event, ui) {
+
+      },
+
+      autoFocus: false,
+
+      minLength: 0
+
+    });
+
+    
+
+      //document.cookie = "reports_id=; expires=Thu, 01 Jan 1970 00:00:00 UTC";
+
+     /* var table =  $('#report_tbl1').DataTable(
+
+          {
+
+            "dom": '<"bottom"f>rt<"bottom"ip><"clear">',  
+
+            "scrollX":true, 
+
+            "bInfo" : true,
+
+            "language": {"url": '<?php echo base_url(); ?>application/language/<?php echo $this->session->userdata("language_name");?>'+'.json'},  
+
+            "order": [],
+
+            "aoColumnDefs": [{
+
+              'bSortable': false      
+
+              
+
+            }],
+
+          "fnDrawCallback": function ( oSettings ){
+
+                  if(oSettings.fnRecordsTotal() < 11){     
+
+                          $('.dataTables_length').hide();
+
+                          $('.dataTables_paginate').hide();
+
+                          //$('.dataTables_info').hide();
+
+                  } else {
+
+                          $('.dataTables_length').show();
+
+                          $('.dataTables_paginate').show(); 
+
+                          //$('.dataTables_info').show();         
+
+                  }
+
+          }  
+
+             
+
+          });*/
+
+      
+
+      $('#ext_search').keyup( function() {
+
+        
+
+          table.search( this.value ).draw();
+
+      
+
+        var idArray = [];
+
+      $('.rep_select').each(function () {
+
+        idArray.push(this.id);
+
+      });
+
+      
+
+      $('#iddd').val(idArray);
+
+      
+
+      
+
+      } );
+
+
+
+
+
+       
+
+    } );
+
+   function mod_reports()
+
+   {
+
+    $('#mod_reports').submit();
+
+   }
+
+   function mod_reports1(passon)
+
+   {
+
+    
+
+    $('#passon').val(passon);
+
+ 
+
+    $('#modr1').submit();
+
+   }
+
+   function mpo_reports()
+
+   {
+
+    $('#mpor').submit();
+
+   }
+
+   
+
+   function productivity_reports1()
+
+   {
+
+    error_message('<?php echo Lang('Process_request') ? Lang('Process_request') : 'Processing your request…' ?>');
+
+    $('#productivity_reports2').submit();
+
+   }
+
+   
+
+   function productivity_export()
+
+   {
+
+    error_message('<?php echo Lang('Process_request') ? Lang('Process_request') : 'Processing your request…' ?>');
+
+    $('#productivity_reports3').submit(); //shirley
+
+   }  
+
+  </script>
+
+
+
+  <form action="mod_reports" id="mod_reports" method="post">
+
+    <input type="hidden" name="report_ids" id="iddd" value=""/>
+
+     <?php if(!empty($_POST)){
+
+      foreach($_POST as $key=>$value){
+
+        if(is_array($value)){
+
+        foreach($value as $val){ ?>
+
+    <input type="hidden" name="<?php echo $key;?>[]" value="<?php echo $val;?>"/>
+
+    <?php }
+
+        }
+
+        else{ ?>
+
+    <input type="hidden" name="<?php echo $key;?>" value="<?php echo $value;?>"/>
+
+    <?php }
+
+      }
+
+    }
+
+    else{ ?>
+
+    <input type="hidden" name="checkPost" id="checkPost" value="1"/>
+
+    <?php } ?>
+
+  </form>
+
+
+
+
+
+
+
+  <form action="prod_reports" id="productivity_reports2" name="productivity_reports2" method="post">
+
+    <?php if(!empty($_POST)){
+
+      foreach($_POST as $key=>$value){
+
+        if(is_array($value)){
+
+        foreach($value as $val){ ?>
+
+    <input type="hidden" name="<?php echo $key;?>[]" value="<?php echo $val;?>"/>
+
+    <?php }
+
+        }
+
+        else{ ?>
+
+    <input type="hidden" name="<?php echo $key;?>" value="<?php echo $value;?>"/>
+
+    <?php }
+
+      }
+
+    }
+
+    else{ ?>
+
+    <input type="hidden" name="checkPost" id="checkPost" value="1"/>
+
+    <?php } ?>
+
+  </form>
+
+
+
+
+
+
+
+  <form action="prod_reports1" id="productivity_reports3" name="productivity_reports2" method="post">
+
+    <?php if(!empty($_POST)){
+
+      foreach($_POST as $key=>$value){
+
+        if(is_array($value)){
+
+        foreach($value as $val){ ?>
+
+    <input type="hidden" name="<?php echo $key;?>[]" value="<?php echo $val;?>"/>
+
+    <?php }
+
+        }
+
+        else{ ?>
+
+    <input type="hidden" name="<?php echo $key;?>" value="<?php echo $value;?>"/>
+
+    <?php }
+
+      }
+
+    }
+
+    else{ ?>
+
+    <input type="hidden" name="checkPost" id="checkPost" value="1"/>
+
+    <?php } ?>
+
+  </form>
+
+
+
+
+
+
+
+  <form action="modr" id="modr1" method="post">
+
+    <input type="hidden" name="report_ids" id="iddd" value=""/>
+
+    <input type="hidden" name="passon" id="passon" value=""/>
+
+
+
+     <?php if(!empty($_POST)){
+
+      foreach($_POST as $key=>$value){
+
+        if(is_array($value)){
+
+        foreach($value as $val){ ?>
+
+    <input type="hidden" name="<?php echo $key;?>[]" value="<?php echo $val;?>"/>
+
+    <?php }
+
+        }
+
+        else{ ?>
+
+    <input type="hidden" name="<?php echo $key;?>" value="<?php echo $value;?>"/>
+
+    <?php }
+
+      }
+
+    }
+
+    else{ ?>
+
+    <input type="hidden" name="checkPost" id="checkPost" value="1"/>
+
+    <?php } ?>
+
+    
+
+  </form>
+
+
+
+
+
+  <form action="mpo" id="mpor" method="post">
+
+    <input type="hidden" name="report_ids" id="iddd" value=""/>
+
+     <?php if(!empty($_POST)){
+
+      foreach($_POST as $key=>$value){
+
+        if(is_array($value)){
+
+        foreach($value as $val){ ?>
+
+    <input type="hidden" name="<?php echo $key;?>[]" value="<?php echo $val;?>"/>
+
+    <?php }
+
+        }
+
+        else{ ?>
+
+    <input type="hidden" name="<?php echo $key;?>" value="<?php echo $value;?>"/>
+
+    <?php }
+
+      }
+
+    }
+
+    else{ ?>
+
+    <input type="hidden" name="checkPost" id="checkPost" value="1"/>
+
+    <?php } ?>
+
+    
+
+  </form>
+
+  <script>
+
+    function IDReport(id){
+
+          url = "<?php echo base_url();?>index.php/print_event/"+id;
+
+          window.location.replace(url);
+
+      }   
+
+
+
+
+
+      function submit_form_report () {
+
+
+
+        $("#find_imput").val($("#find_report").val());
+
+
+
+        document.cookie = 'find_report=' + $("#find_imput").val();
+
+        document.cookie = 'pagination_report=0';
+
+        
+
+        //#alert($("#find_imput").val());
+
+        $("#reports_form").submit();
+
+      } 
+
+
+
+  </script>
+

@@ -1,0 +1,467 @@
+
+	<?php
+	/**
+			* Class Name :: Model_news
+			* Description :: Module for newsfeeder
+			* Author Shirley Molina 09 Sep 2015 
+			*/
+	class Model_news extends CI_Model 
+	{
+		public function __construct() 
+		{
+	        parent::__construct();
+	        $this->load->model('sp_list');
+
+	    }
+	/**
+			* Function  Name :: mod_get_event_log_details
+			* Description :: Module for get log_details
+			* Author:: Shirley 30 sep 2015 
+			*/
+	  
+	   function mod_get_event_log_details($prev_date='')
+
+	   {
+
+	   		if(!empty($prev_date))
+			{
+	   		  $date=$prev_date;
+			  $follow_date=date('M d,Y',strtotime($prev_date));
+			}
+			else
+			{
+			  $date=date('Y-m-d');
+			  $follow_date=Lang('Today');
+		 
+			  //exit();
+			}
+	            
+	            $dep_names= array('Administration','Bellstaff','Front Office','Room Service','Sales & Catering','Gym','Food & Beverage','Housekeeping','IT','Maintenance','Security','Valet');
+	            $tag_names= array('Air Conditioning','Attention','Leak','Balcony Door','Bathrobe','Bed','Billing','Blanket','Broken Furniture','Common Area Cleaning','Credit Issue','Curtain','Do not Disturb','Door Lock','Electric Issue');
+	            $tag_names2=array('Elevator','Employee Recognition','Crib Request','Extra Hangers','Group Arrival','Guest Complaints','Hair Dryer','Hallway Cleaning','Hand Soap','Ice Machine','Iron','Laundry','Light Out','Lost and Found',
+	            'Meeting Room Request','Message to Hotel','Moisture','Noise Complaint','Package','Paint','Phone Issue','Radio','Reservation','Rollaway Bed','Room Cleaning','Room Move','Safe Box','Sink Water Pressure',
+	            'Shower Water Pressure','Smoke Detector','Social Media','Television','Toilet Clogged','Toilet Seat','Toiletries','Towels','VIP Arrival','Wake Up Call','Water not heated','WIFI');
+				
+
+				$hotel_id=$this->session->userdata("hotel_id");
+				$start_date=$this->input->post('header_startDate')?date('Y-m-d',strtotime($this->input->post('header_startDate'))):'';
+				$end_date=$this->input->post('header_endDate')?date('Y-m-d',strtotime($this->input->post('header_endDate'))):($start_date != ''?date('Y-m-d'):'');
+				$ext_search=$this->input->post('ext_search')?strtolower($this->input->post('ext_search')):'';
+
+				
+				$first_check=$this->db->select("distinct CASE  
+			    WHEN l.module_id='1' THEN 'blue'
+			    WHEN l.module_id='2' THEN 'red'
+			    WHEN l.module_id='3' THEN 'orange'
+			    WHEN l.module_id='7' THEN 'light-blue' 
+			   
+				ELSE 'false' END as tag	,concat(l.action,' ',CASE  
+			    WHEN l.module_id='1' THEN 'Event'
+			    WHEN l.module_id='2' THEN 'Package'
+			    WHEN l.module_id='3' THEN 'LostFound'
+			    WHEN l.module_id='7' THEN 'User' 
+				ELSE 'false' END) as activity,l.prim_id as ID,l.comments as comments,l.date_time as get_date,
+				if(l.staff_id !='0',concat(left(s.firstname,1),'.',s.lastname),'Guest') as StaffName,l.track_id",false);
+              
+
+
+
+                /*echo array_search($ext_search,Lang);
+                print_r(Lang($ext_search));
+                exit();*/
+				$this->db->from("log_tracker l");
+	         
+			    $this->db->join("staff s","s.staff_id=l.staff_id","left");
+				$this->db->where(array("l.hotel_id"=>$hotel_id));
+				$this->db->where("(l.module_id = 1 or l.module_id = 2 or l.module_id = 3 or l.module_id = 7) ");
+				$this->db->order_by("l.track_id desc");
+				$firct_check_newsfeeder = $this->db->get();
+				if($firct_check_newsfeeder->num_rows() >0)
+				{
+					$sql="SELECT CASE WHEN l.module_id='1' THEN 'blue' WHEN l.module_id='-1' THEN 'blue' WHEN l.module_id='2' THEN 'red' WHEN l.module_id='3' THEN 'orange' WHEN l.module_id='7' THEN 'light-blue' ELSE 'false' END as tag, 
+					
+					CASE WHEN l.module_id='1' THEN concat('Event',' ',(Case When l.action='add' then 'Added' when l.action='update' then 'Updated' when l.action='delete' then 'Deleted' end)) WHEN l.module_id='-1' THEN concat('Event',' ',(Case When l.action='add' then 'Added' when l.action='update' then 'Updated' when l.action='delete' then 'Deleted' end)) WHEN l.module_id='2' THEN concat('Package',' ',(Case When l.action='add' then 'Added' when l.action='update' then 'Updated' when l.action='delete' then 'Deleted' end)) WHEN l.module_id='3' THEN concat('Lost & Found',' ',(Case When l.action='add' then 'Added' when l.action='update' then 'Updated' when l.action='delete' then 'Deleted' end)) WHEN l.module_id='7' THEN concat('User',' ',(Case When l.action='add' then 'Added' when l.action='update' then 'Updated' when l.action='delete' then 'Deleted' end)) ELSE 'false' END as activity,
+					
+					
+					l.prim_id as ID, l.comments as comments, l.date_time as get_date, 
+					CASE WHEN l.module_id='1' Then concat(left(s.firstname, 1), '.', s.lastname) when l.module_id='2' Then concat(left(s.firstname, 1), '.', s.lastname)
+					when l.module_id='3' Then concat(left(s.firstname, 1), '.', s.lastname)
+					when l.module_id='7' Then concat(left(s.firstname, 1), '.', s.lastname)
+					When l.module_id='-1' Then concat(left(g1.firstname, 1), '.', g1.lastname, ' (Guest)')  end  as StaffName, 
+					
+					
+					staff_img_name,hr.location ,d.dept_name,t.tag_name,concat(ge.firstname,' ',ge.lastname) as Guest_name,CASE WHEN l.module_id='1' THEN e.count_by_hotel_id WHEN l.module_id='-1' THEN e1.count_by_hotel_id WHEN l.module_id='2' THEN p.consecutive WHEN l.module_id='3' THEN lo.consecutive WHEN l.module_id='7' THEN s.staff_id ELSE 'false' END as ID
+					FROM (`log_tracker` l) 
+					LEFT JOIN `events` e1 ON `l`.`prim_id`= case when module_id='-1' then `e1`.`event_id`  end
+					LEFT JOIN `events` e ON `l`.`prim_id`= case when module_id='1' then `e`.`event_id`  end
+					LEFT JOIN `packages` p ON `l`.`prim_id`= case when module_id='2' then `p`.`pkg_no` end
+					LEFT JOIN `lost_found` lo ON `l`.`prim_id`= case when module_id='3' then `lo`.`lst_fnd_no` end
+					LEFT JOIN `hotel_rooms` hr ON `hr`.`room_id` = CASE WHEN l.module_id='1' THEN e.room_id WHEN l.module_id='-1' THEN e1.room_id WHEN l.module_id='2' THEN p.room_id WHEN l.module_id='3' THEN 			             lo.room_id  END 
+					LEFT JOIN `staff` s ON `s`.`staff_id`=`l`.`staff_id`
+					LEFT JOIN `guest_registration` g ON `g`.`guest_id`=`l`.`prim_id`
+					LEFT JOIN `guest_registration` g1 ON `g1`.`guest_id`=`e1`.`guest_id`
+					left join guest_registration ge on ge.guest_id=case  when l.module_id='2' then p.guest_id when l.module_id='3' then lo.guest_id end 
+					left join dept_tag dt on dt.dept_tag_id=case when (module_id = 1) then e.dept_tag_id when (module_id = -1) then e1.dept_tag_id end 
+					left join departments d on dt.dept_id=d.dept_id left join tags t on dt.tag_id=t.tag_id
+					WHERE `l`.`hotel_id` = '$hotel_id' AND (l.module_id = 1 or l.module_id = 2 or l.module_id = 3 or l.module_id = 7 or l.module_id = -1)";
+				
+			    	$CI = & get_instance(); 
+    				$language_name = $CI->session->userdata('language_name');
+    				//Lines by shirley
+    				if($language_name!='english')
+    				{
+    					if($ext_search != '')
+						{ 
+                                $tr=false;
+			                    $arrdep=array();
+			                    $arrtag=array();
+			                    $arrtag2=array();
+			                    $valuesearch='';
+			                    print_r($ext_search);
+
+                                /*Translate array dep,tag and tag2*/
+			                    foreach ($dep_names as $key =>$val)
+				            	{
+			                    	$arrdep[]=strtolower(Lang($val));
+
+			                    }
+			                    foreach ($tag_names as $key =>$val)
+				            	{
+			                    	$arrtag[]=strtolower(Lang($val));
+			                    }
+			                    foreach ($tag_names2 as $key =>$val)
+				            	{
+			                    	$arrtag2[]=strtolower(Lang($val));
+			                    }
+
+                                /*End Traslate*/
+
+                                $ext_search=trim($ext_search);
+                                $f=explode(" ",$ext_search);
+                                                               
+                                if(in_array($ext_search,$arrdep))
+                                {
+                                	$pos_arraydep=array_search(strtolower($ext_search), $arrdep);
+                                	$valuesearch=$dep_names[$pos_arraydep];
+                                	
+                                
+                                }
+
+                                else if (in_array($ext_search,$arrtag))
+                                {
+                                    $pos_arraytag=array_search(strtolower($ext_search), $arrtag);
+                                    $valuesearch.=$tag_names[$pos_arraytag];
+							       
+                                }
+
+                                else if(in_array($ext_search,$arrtag2))
+                                {
+
+                                	$pos_arraytag2=array_search(strtolower($ext_search), $arrtag2);
+                                	$valuesearch.=$tag_names2[$pos_arraytag2];
+                                	
+                                }
+
+                                else
+                                {
+                                
+                                   $confir=false;
+                                   $i=0;
+                                   $tr=false;
+                                   //search dep
+                                   foreach ($arrdep as $key =>$val)
+			                  	   {
+                                        $d=explode(" ", $val);
+			            				foreach($d as $key =>$value)
+			            				{		            			     			       			
+			            		    		foreach($f as $key =>$val1)
+			            		    		{
+			            		    			if(stristr(strtolower($val1),$value)==true)
+			            		    			{
+		   						   					$tr=true;
+		   						   					$confir=true;
+		   						   					$valuesearch=$dep_names[$i];
+		   						   					break;
+		   						   				}
+		   						   	
+		                            		}//End for $f(explode of $ext_search)
+		                            		if($tr==true){
+		                            			break;
+		                            		}
+			            			
+			            				} //End for $d
+
+			            				$i++;
+			            				if($tr==true){
+		                            		break;
+		                            	}
+
+                                    }//End for $arrdep
+
+                                    //search tag
+                                    $i=0;
+                                    $tr=false;
+                                    foreach ($arrtag as $key =>$val)
+			                  	    {
+                                    	$d=explode(" ", $val);
+                                    	foreach($d as $key =>$value)
+			            				{		            			     			       			
+			            		    		foreach($f as $key =>$val1)
+			            		    		{
+			            		    			if(stristr(strtolower($val1),$value)==true)
+			            		    			{
+		   						   					$tr=true;
+		   						   					$confir=true;
+		   						   					$valuesearch.=$tag_names[$i];
+		   						   					break;
+		   						   				}
+		   						   	
+		                            		}//End for $f(explode of $ext_search)
+		                            		if($tr==true){
+		                            			break;
+		                            		}
+			            			
+			            				} //End for $d
+
+			            				$i++;
+			            				if($tr==true){
+		                            		break;
+		                            	}
+
+                                    }//End for $arrdep
+                                    
+                                    //search tag2
+                                    $i=0;
+                                    $tr=false;
+                                    foreach ($arrtag2 as $key =>$val)
+			                  	    {
+                                    	$d=explode(" ", $val);
+			            				foreach($d as $key =>$value)
+			            				{		            			     			       			
+			            		    		foreach($f as $key =>$val1)
+			            		    		{
+			            		    			if(stristr(strtolower($val1),$value)==true)
+			            		    			{  
+			            		    				$tr=true;
+		   						   					$confir=true;
+		   						   					$valuesearch.=$tag_names2[$i];
+		   						   					break;
+		   						   				}
+		   						   	
+		                            		}//End for $f(explode of $ext_search)
+		                            		if($tr==true){
+		                            			break;
+		                            		}
+			            			
+			            				} //End for $d
+
+			            				$i++;
+			            				if($tr==true){
+		                            		break;
+		                            	}
+
+                                    }//End for $arrdep
+
+
+                                  
+                                } //End else
+
+                            $ext_search=$valuesearch;         
+                            }
+                          //Lines by shirley
+                       
+      	}
+              
+				
+
+				if($start_date != ''  && $ext_search == '')
+
+				{           
+							$sql.="And DATE(l.date_time) BETWEEN '$start_date' AND '$end_date'";
+				}
+				
+              
+				if($ext_search != ''  && $end_date == '')
+				{
+					
+					
+
+					if($ext_search == 'event')
+					{
+						$sql.=" And l.module_id=1 ";
+					}
+					else if(strtolower($ext_search)==='package' Or strtolower($ext_search)==='packages')
+					{
+						$sql.=" And l.module_id=2 ";
+					}
+
+					else if(strtolower($ext_search)==='paquete' Or strtolower($ext_search)==='paquetes')
+					{
+						$sql.=" And l.module_id=2 ";
+					}
+					else if($ext_search == 'lostfound')
+					{
+						$sql.=" And l.module_id=3 ";
+					}
+					else if($ext_search == 'staff')
+					{
+						$sql.=" And l.module_id=7 ";
+					}
+					else if($ext_search == 'added')
+					{
+						$sql.=" And l.action='add' ";
+					}
+					else if($ext_search == 'updated')
+					{
+						$sql.=" And l.action='update' ";
+					}
+					else if($ext_search == 'deleted')
+					{
+						$sql.=" And l.action='delete'";
+					}
+					else
+					{
+
+					 $vartmp = explode(" ", $ext_search);	
+					 $acum=" AND (";
+					 foreach ($vartmp as $row) 
+	                 {  if( strlen($row)>2) 
+	                   
+					 	 $acum.="  (s.lastname like '%$row%' or s.firstname like '%$row%' or l.comments like '%$row%' or g1.firstname like '%$row%' or g1.lastname like '%$row%' or hr.location like '%$row%' or `e1`.`event_id` like '%$row%' or `e`.`event_id` like '%$row%' or `p`.`pkg_no` like '%$row%' or `lo`.`lst_fnd_no` like '%$row%' or s.staff_id  like '%$row%' or d.dept_name like '%$row%' or t.tag_name like '$row%' or ge.firstname like '%$row%' or ge.lastname like '%$row%') OR ";
+					 	
+	                 }
+	                 
+	                 $acum.=" ) ";
+	                
+	                 $sql.=substr($acum,0,strlen($acum)-7).' )';
+	                 
+					
+					}
+				}
+           
+				if($ext_search != ''  && $end_date != '')
+				{   
+					
+					
+					if($ext_search == 'event')
+					{
+						$sql.=" And l.module_id=1 and DATE(l.date_time) BETWEEN '$start_date' AND '$end_date'";
+					}
+					else if(strtolower($ext_search)==='package' Or strtolower($ext_search)==='packages')
+					{
+						$sql.=" And l.module_id=2 and DATE(l.date_time) BETWEEN '$start_date' AND '$end_date'";
+					}
+					else if(strtolower($ext_search)==='paquete' Or strtolower($ext_search)==='paquetes')
+					{
+						$sql.=" And l.module_id=2 ";
+					}
+					else if($ext_search == 'lostfound')
+					{
+						$sql.=" And l.module_id=3 and DATE(l.date_time) BETWEEN '$start_date' AND '$end_date'";
+					}
+					else if($ext_search == 'staff')
+					{
+						$sql.=" And l.module_id=7 and DATE(l.date_time) BETWEEN '$start_date' AND '$end_date' ";
+					}
+					else if($ext_search == 'added')
+					{
+						$sql.=" And l.action='add' and DATE(l.date_time) BETWEEN '$start_date' AND '$end_date' ";
+					}
+					else if($ext_search == 'updated')
+					{
+						$sql.=" And l.action='update' and DATE(l.date_time) BETWEEN '$start_date' AND '$end_date' ";
+					}
+					else if($ext_search == 'deleted')
+					{
+						$sql.=" And l.action='delete' and DATE(l.date_time) BETWEEN '$start_date' AND '$end_date'";
+					}
+					else
+					{
+
+	                 $vartmp = explode(" ", $ext_search);	
+					 $acum=" AND (";
+					 foreach ($vartmp as $row) 
+	                 { if(strlen($row)>2){
+					 	 $acum.="  ((s.lastname like '%$row%' or s.firstname like '%$row%' or l.comments like '%$row%' or g1.firstname like '%$row%' or g1.lastname like '%$row%' or hr.location like '%$row%' or `e1`.`event_id` like '%$row%' or `e`.`event_id` like '%$row%' or `p`.`pkg_no` like '%$row%' or `lo`.`lst_fnd_no` like '%$row%' or s.staff_id  like '%$row%' or d.dept_name like '%$row%' or t.tag_name like '$row%' or ge.firstname like '%$row%' or ge.lastname like '%$row%')  AND (DATE(l.date_time) BETWEEN '$start_date' AND '$end_date') ) OR ";
+	                 }
+	                 }
+	                 
+	                 $acum.=" ) ";
+	                
+	                 $sql.=substr($acum,0,strlen($acum)-7).' )';
+	                //$sql.="And (s.lastname like '%$ext_search%' or s.firstname like '%$ext_search%' or l.comments like '%$ext_search%' or g1.firstname like '%$ext_search%' or g1.lastname like '%$ext_search%' or hr.location like '%$ext_search%' or `e1`.`event_id` like '%$ext_search%' or `e`.`event_id` like '%$ext_search%' or `p`.`pkg_no` like '%$ext_search%' or `lo`.`lst_fnd_no` like '%$ext_search%' or s.staff_id  like '%$ext_search%' or d.dept_name like '%$ext_search%' or t.tag_name like '%$ext_search%' or ge.firstname like '%$ext_search%' or ge.lastname like '%$ext_search%') and DATE(l.date_time) BETWEEN '$start_date' AND '$end_date'";
+					
+
+					}
+				}
+                
+                
+
+				if($ext_search == ''  && $end_date == '' && $start_date == '')
+				{
+                  
+					$sql.="And DATE(l.date_time) = '$date' ";
+										
+				}
+
+				
+			   // $sql.=" ORDER BY l.track_id ASC";
+			    if( $end_date == '' && $start_date == '')
+			      $sql.="ORDER BY  date(l.date_time) asc,time(l.date_time) desc";
+			   else 
+			      $sql.="ORDER BY date(l.date_time) desc,time(l.date_time) desc";
+			  	//,time(l.date_time) desc";
+		
+				$newsfeeder=$this->db->query($sql);
+				
+
+	   			if($newsfeeder->num_rows() >0)
+				{
+					$i=0;
+	  			foreach($newsfeeder->result_array() as $row)
+				{
+				if(strtotime(date('Y-m-d',strtotime($row['get_date']))) == strtotime(date('Y-m-d')))
+				{
+				$follow_date=Lang('Today');
+				}
+				else
+				{
+					$follow_date=date('M d, Y',strtotime($row['get_date']));
+				}
+					$result_newsfeeder[$follow_date][$i]['tag']=$row['tag'];
+					$result_newsfeeder[$follow_date][$i]['activity']=$row['activity'];
+					$result_newsfeeder[$follow_date][$i]['ID']=$row['ID'];
+					$result_newsfeeder[$follow_date][$i]['comments']=$row['comments'];
+					$result_newsfeeder[$follow_date][$i]['get_date']=$row['get_date'];
+					$result_newsfeeder[$follow_date][$i]['StaffName']=$row['StaffName'];
+					$result_newsfeeder[$follow_date][$i]['staff_img_name']=$row['staff_img_name'];
+					$result_newsfeeder[$follow_date][$i]['location']=$row['location'];
+					$result_newsfeeder[$follow_date][$i]['dept_name']=$row['dept_name'];
+					$result_newsfeeder[$follow_date][$i]['tag_name']=$row['tag_name'];
+
+
+					//$result_newsfeeder[$follow_date][$i]['Dept_tag_name']=$row['Dept_tag_name'];
+					$result_newsfeeder[$follow_date][$i]['Guest_name']=$row['Guest_name'];
+					$result_newsfeeder[$follow_date][$i]['ID']=$row['ID'];
+					$i++;
+				}
+				return $result_newsfeeder;
+			}
+			
+			else
+			{
+				if($ext_search != '' ||  $start_date != '' || $end_date != '')
+				{
+			 	return false;
+				}
+				return (isset($prev_date) && !empty($prev_date))?$prev_date:date('m-d-Y');
+			}
+			}
+			else
+			{
+				return false;
+			}
+			
+	   }
+	}        
+	    
